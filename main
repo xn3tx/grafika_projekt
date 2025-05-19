@@ -1,0 +1,74 @@
+import pygame
+from pygame.locals import *
+from OpenGL.GL import *
+from OpenGL.GLU import *
+import math
+import time
+
+# Parametry układu amortyzatora
+m = 1.0     # masa
+k = 50.0    # sztywność sprężyny
+c = 5.0     # tłumienie
+
+# Pozycje i prędkości
+y = 0.0
+v = 0.0
+
+# Platforma wymuszająca drgania (sinusoida)
+def platform_motion(t):
+    return 0.2 * math.sin(2 * math.pi * 1 * t)  # amplituda * sin(2πft)
+
+def update_physics(dt, t):
+    global y, v
+    F = -k * y - c * v + k * platform_motion(t)
+    a = F / m
+    v += a * dt
+    y += v * dt
+
+def draw_wheel(y_pos):
+    glColor3f(0.2, 0.2, 0.8)
+    glPushMatrix()
+    glTranslatef(0.0, y_pos, 0.0)
+    quad = gluNewQuadric()
+    gluDisk(quad, 0, 0.3, 32, 1)
+    glPopMatrix()
+
+def main():
+    pygame.init()
+    display = (800, 600)
+    pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
+    gluOrtho2D(-1, 1, -1, 1)
+
+    clock = pygame.time.Clock()
+    start_time = time.time()
+
+    running = True
+    while running:
+        dt = clock.tick(60) / 1000.0
+        t = time.time() - start_time
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        update_physics(dt, t)
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        # Rysowanie platformy
+        glColor3f(0.3, 0.3, 0.3)
+        glBegin(GL_QUADS)
+        glVertex2f(-1, -0.5)
+        glVertex2f(1, -0.5)
+        glVertex2f(1, -0.52)
+        glVertex2f(-1, -0.52)
+        glEnd()
+
+        draw_wheel(-0.5 + y)
+
+        pygame.display.flip()
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
