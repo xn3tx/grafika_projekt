@@ -18,37 +18,75 @@ class ParameterControl:
     def open_control_window(system):
         def update_parameters():
             try:
-                system.spring.k = float(k_entry.get())
-                system.attenuator.b = float(b_entry.get())
-                system.platform_amp = float(a_entry.get())
-                system.platform_freq = float(f_entry.get())
-            except ValueError:
-                pass
+                new_k = float(k_entry.get())
+                new_b = float(b_entry.get())
+                new_a = float(a_entry.get())
+                new_f = float(f_entry.get())
 
-        def plot_response():
-            t_vals = []
-            x_vals = []
+                if not (10 <= new_k <= 1000):
+                    raise ValueError("Błąd - k musi być w zakresie 10–1000")
+                if not (0 <= new_b <= 100):
+                    raise ValueError("Błąd - b musi być w zakresie 0–100")
+                if not (0 <= new_a <= 200):
+                    raise ValueError("Błąd - A musi być w zakresie 0–200")
+                if not (0.1 <= new_f <= 10):
+                    raise ValueError("Błąd - f musi być w zakresie 0.1–10")
 
-            temp_t = 0
-            x = 0
-            v = 0
-            for _ in range(1000):
-                y_wheel = system.platform_amp * math.sin(2 * math.pi * system.platform_freq * temp_t)
-                y_rel = x - y_wheel
-                a = (-system.spring.k * y_rel - system.attenuator.b * v) / system.mass
-                v += a * 0.01
-                x += v * 0.01
-                temp_t += 0.01
-                t_vals.append(temp_t)
-                x_vals.append(x)
+                # Zapisanie poprawnych wartości
+                system.spring.k = new_k
+                system.attenuator.b = new_b
+                system.platform_amp = new_a
+                system.platform_freq = new_f
 
-            fig.clear()
-            ax = fig.add_subplot(111)
-            ax.plot(t_vals, x_vals, label='Wy')
-            ax.set_xlabel('Czas [s]')
-            ax.set_ylabel('Przemieszczenie [px]')
-            ax.legend()
-            canvas.draw()
+                error_label.config(text="Zapisano parametry poprawnie", foreground="green")
+
+            except ValueError as e:
+                error_label.config(text=str(e), foreground="red")
+
+        def output_plot():
+            try:
+                new_k = float(k_entry.get())
+                new_b = float(b_entry.get())
+                new_a = float(a_entry.get())
+                new_f = float(f_entry.get())
+
+                if not (10 <= new_k <= 1000):
+                    raise ValueError("Błąd - k musi być w zakresie 10–1000")
+                if not (0 <= new_b <= 100):
+                    raise ValueError("Błąd - b musi być w zakresie 0–100")
+                if not (0 <= new_a <= 200):
+                    raise ValueError("Błąd - A musi być w zakresie 0–200")
+                if not (0.1 <= new_f <= 10):
+                    raise ValueError("Błąd - f musi być w zakresie 0.1–10")
+
+                t_vals = []
+                x_vals = []
+                temp_t = 0
+                x = 0
+                v = 0
+
+                for _ in range(1000):
+                    y_wheel = new_a * math.sin(2 * math.pi * new_f * temp_t)
+                    y_rel = x - y_wheel
+                    a = (-new_k * y_rel - new_b * v) / system.mass
+                    v += a * 0.01
+                    x += v * 0.01
+                    temp_t += 0.01
+                    t_vals.append(temp_t)
+                    x_vals.append(x)
+
+                fig.clear()
+                ax = fig.add_subplot(111)
+                ax.plot(t_vals, x_vals, label='Wy')
+                ax.set_xlabel('Czas [s]')
+                ax.set_ylabel('Przemieszczenie [px]')
+                ax.legend()
+                canvas.draw()
+
+                error_label.config(text="", foreground="green")
+
+            except ValueError as e:
+                error_label.config(text=f"Nie można wygenerować wykresu: {str(e)}", foreground="red")
 
         window = tk.Tk()
         window.title("Zmiana parametrów zawieszenia")
@@ -74,7 +112,11 @@ class ParameterControl:
         f_entry.pack()
 
         ttk.Button(window, text="Zastosuj", command=update_parameters).pack(pady=5)
-        ttk.Button(window, text="Wykres stabilności", command=plot_response).pack()
+        ttk.Button(window, text="Wykres stabilności", command=output_plot).pack()
+
+        # Miejsce na komunikat
+        error_label = ttk.Label(window, text="", foreground="red")
+        error_label.pack(pady=5)
 
         fig = plt.Figure(figsize=(5, 3), dpi=100)
         canvas = FigureCanvasTkAgg(fig, master=window)
