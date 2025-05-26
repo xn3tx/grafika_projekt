@@ -5,9 +5,82 @@ from OpenGL.GLU import *
 import math
 import time
 import sys
+import tkinter as tk
+from tkinter import ttk
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import threading
 
 WIDTH, HEIGHT = 800, 600
 FPS = 60
+
+class ParameterControl:
+    def open_control_window(system):
+        def update_parameters():
+            try:
+                system.spring.k = float(k_entry.get())
+                system.attenuator.b = float(b_entry.get())
+                system.platform_amp = float(a_entry.get())
+                system.platform_freq = float(f_entry.get())
+            except ValueError:
+                pass
+
+        def plot_response():
+            t_vals = []
+            x_vals = []
+
+            temp_t = 0
+            x = 0
+            v = 0
+            for _ in range(1000):
+                y_wheel = system.platform_amp * math.sin(2 * math.pi * system.platform_freq * temp_t)
+                y_rel = x - y_wheel
+                a = (-system.spring.k * y_rel - system.attenuator.b * v) / system.mass
+                v += a * 0.01
+                x += v * 0.01
+                temp_t += 0.01
+                t_vals.append(temp_t)
+                x_vals.append(x)
+
+            fig.clear()
+            ax = fig.add_subplot(111)
+            ax.plot(t_vals, x_vals, label='Wy')
+            ax.set_xlabel('Czas [s]')
+            ax.set_ylabel('Przemieszczenie [px]')
+            ax.legend()
+            canvas.draw()
+
+        window = tk.Tk()
+        window.title("Zmiana parametrów zawieszenia")
+
+        ttk.Label(window, text="Współczynnik sprężystości (k):").pack()
+        k_entry = ttk.Entry(window)
+        k_entry.insert(0, str(system.spring.k))
+        k_entry.pack()
+
+        ttk.Label(window, text="Współczynnik tłumienia (b):").pack()
+        b_entry = ttk.Entry(window)
+        b_entry.insert(0, str(system.attenuator.b))
+        b_entry.pack()
+
+        ttk.Label(window, text="Amplituda drgań platformy (A):").pack()
+        a_entry = ttk.Entry(window)
+        a_entry.insert(0, str(system.platform_amp))
+        a_entry.pack()
+
+        ttk.Label(window, text="Częstotliwość drgań platformy (f):").pack()
+        f_entry = ttk.Entry(window)
+        f_entry.insert(0, str(system.platform_freq))
+        f_entry.pack()
+
+        ttk.Button(window, text="Zastosuj", command=update_parameters).pack(pady=5)
+        ttk.Button(window, text="Wykres stabilności", command=plot_response).pack()
+
+        fig = plt.Figure(figsize=(5, 3), dpi=100)
+        canvas = FigureCanvasTkAgg(fig, master=window)
+        canvas.get_tk_widget().pack()
+
+        window.mainloop()
 
 class Drawing:
     @staticmethod   #umożliwia wywołanie bez tworzenia obiektu
@@ -132,6 +205,7 @@ def main():
     Drawing.set_2d_projection()
     clock = pygame.time.Clock()
     system = InputPlatform()
+    threading.Thread(target=ParameterControl.open_control_window, args=(system,), daemon=True).start()
 
     while True:
         dt = clock.tick(FPS) / 1000.0
@@ -147,3 +221,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
