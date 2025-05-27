@@ -67,8 +67,10 @@ class ParameterControl:
 
                 for _ in range(1000):
                     y_wheel = new_a * math.sin(2 * math.pi * new_f * temp_t)
+                    dy_wheel = 2 * math.pi * new_f * new_a * math.cos(2 * math.pi * new_f * temp_t)  
                     y_rel = x - y_wheel
-                    a = (-new_k * y_rel - new_b * v) / system.mass
+                    v_rel = v - dy_wheel
+                    a = (-new_k * y_rel - new_b * v_rel) / system.mass
                     v += a * 0.01
                     x += v * 0.01
                     temp_t += 0.01
@@ -230,8 +232,10 @@ class InputPlatform:
     def update_motion(self, dt):
         self.t += dt
         y_wheel = self.platform_motion(self.t)
+        dy_wheel = 2 * math.pi * self.platform_freq * self.platform_amp * math.cos(2 * math.pi * self.platform_freq * self.t)  
         y_rel = self.x - y_wheel
-        a = (-self.spring.k * y_rel - self.attenuator.b * self.v) / self.mass
+        v_rel = self.v - dy_wheel
+        a = (-self.spring.k * y_rel - self.attenuator.b * v_rel) / self.mass
         self.v += a * dt
         self.x += self.v * dt
         return y_wheel, self.x
