@@ -59,8 +59,8 @@ class Drawing:
         # Podwozie
         beam_start_x = center_x + self.wheel.width // 2
         beam_end_x = beam_start_x + 100
-        Drawing.draw_line(beam_start_x, wheel_axis_y, beam_end_x, wheel_axis_y, (150, 150, 150), 8)
-        Drawing.draw_rect(center_x + 50, desk_y, 200, 20, (180, 180, 180))
+        self.draw_line(beam_start_x, wheel_axis_y, beam_end_x, wheel_axis_y, (150, 150, 150), 8)
+        self.draw_rect(center_x + 50, desk_y, 200, 20, (180, 180, 180))
 
         # Sprężyna i tłumik
         spring_x = beam_end_x - 60
