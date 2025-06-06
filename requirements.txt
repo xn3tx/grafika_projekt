@@ -1,2 +1,6 @@
+<<<<<<< HEAD
 pygame
+=======
+pygame
+>>>>>>> 92664a21a74fbb884fe937d3ed18307e76553ee4
 PyOpenGL
