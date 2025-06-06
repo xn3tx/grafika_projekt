@@ -71,7 +71,7 @@ class InputOutputFunction:
         plt.suptitle("Input and Output Plot", fontsize=16)
 
         plt.figtext(
-        0.5, 0.91,  # pozycja (x, y) w układzie okna [0,1]
+        0.5, 0.91,  # position in window
         rf"$G(s) = \frac{{1}}{{{self.mass:.1f}s^2 + {self.attenuator.b:.1f}s + {self.spring.k:.1f}}}$",
         ha='center', va='top',
         fontsize=14, color="black"
@@ -94,14 +94,3 @@ class InputOutputFunction:
         plt.legend()
         plt.tight_layout(rect=[0, 0, 1, 0.88])
         plt.show()
-
-    """def update_motion(self, dt):
-        self.t += dt
-        y_wheel = self.platform_motion(self.t)
-        dy_wheel = 2 * math.pi * self.platform_freq * self.platform_amp * math.cos(2 * math.pi * self.platform_freq * self.t)  
-        y_rel = self.x - y_wheel
-        v_rel = self.v - dy_wheel
-        a = (-self.spring.k * y_rel - self.attenuator.b * v_rel) / self.mass
-        self.v += a * dt
-        self.x += self.v * dt
-        return y_wheel, self.x"""
