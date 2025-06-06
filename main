@@ -2,123 +2,216 @@ import pygame
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
-import math
-import time
-import sys
 import tkinter as tk
-from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import threading
-
-WIDTH, HEIGHT = 800, 600
-FPS = 60
+from spring import Spring
+from attenuator import Attenuator
+from wheel import Wheel
+from drawscene import Drawing
+from input_output import InputOutputFunction
+import ctypes
 
 class ParameterControl:
-    def open_control_window(system):
-        def update_parameters():
-            try:
-                new_k = float(k_entry.get())
-                new_b = float(b_entry.get())
-                new_a = float(a_entry.get())
-                new_f = float(f_entry.get())
+    def __init__(self):
+        self.width = 800
+        self.height = 1050
+        self.fps = 60
+        self.spring = Spring()
+        self.attenuator = Attenuator()
+        self.wheel = Wheel()
+        self.input_type = "sine"
+        self.in_out = InputOutputFunction(self.input_type, self.wheel, self.spring, self.attenuator)
+        self.error_label = None
 
-                if not (10 <= new_k <= 1000):
-                    raise ValueError("Błąd - k musi być w zakresie 10–1000")
-                if not (0 <= new_b <= 100):
-                    raise ValueError("Błąd - b musi być w zakresie 0–100")
-                if not (0 <= new_a <= 200):
-                    raise ValueError("Błąd - A musi być w zakresie 0–200")
-                if not (0.1 <= new_f <= 10):
-                    raise ValueError("Błąd - f musi być w zakresie 0.1–10")
+    def update_parameters(self):
+        try:
+            new_k = float(self.k_entry.get())
+            new_b = float(self.b_entry.get())
+            new_a = float(self.amp_entry.get())
+            new_f = float(self.freq_entry.get())
+            new_m = float(self.m_entry.get())
+            new_phase = float(self.phase_entry.get())
+            new_pulse_width = float(self.pulse_width_entry.get())
+            new_type = self.input_type.get().lower()
 
-                # Zapisanie poprawnych wartości
-                system.spring.k = new_k
-                system.attenuator.b = new_b
-                system.platform_amp = new_a
-                system.platform_freq = new_f
+            if not (10.0 <= new_k <= 1000.0):
+                raise ValueError("Error - k must be in range [10, 1000]")
+            if not (0.0 <= new_b <= 100.0):
+                raise ValueError("Error - b must be in range [0, 100]")
+            if not (0.0 <= new_a <= 200.0):
+                raise ValueError("Error - A must be in range [0, 200]")
+            if not (0.1 <= new_f <= 10.0):
+                raise ValueError("Error - f must be in range [0.1, 10]")
+            if not (-3.14 <= new_phase <= 3.14):
+                raise ValueError("Error - phase must be in range [-π, π]")
+            if not (0.0 <= new_pulse_width <= 10.0):
+                raise ValueError("Error - pulse width must be in range [0,10]")
+            if not (1.0 <= new_m <= 1000.0):
+                raise ValueError("Error - mass must be in range [1,1000]")
 
-                error_label.config(text="Zapisano parametry poprawnie", foreground="green")
+            #Save correct values
+            self.spring.k = new_k
+            self.attenuator.b = new_b
+            self.in_out.frequency = new_f
+            self.in_out.amplitude = new_a
+            self.in_out.phase = new_phase
+            self.in_out.pulse_width = new_pulse_width
+            self.in_out.mass = new_m
+            self.in_out.input_type = new_type
 
-            except ValueError as e:
-                error_label.config(text=str(e), foreground="red")
+            if self.error_label is not None:
+                self.error_label.config(text="Correct parameters", foreground="green")
+            return True
 
-        def output_plot():
-            try:
-                new_k = float(k_entry.get())
-                new_b = float(b_entry.get())
-                new_a = float(a_entry.get())
-                new_f = float(f_entry.get())
+        except ValueError as e:
+            if self.error_label is not None:
+                self.error_label.config(text=str(e), foreground="red")
+            return False
 
-                if not (10 <= new_k <= 1000):
-                    raise ValueError("Błąd - k musi być w zakresie 10–1000")
-                if not (0 <= new_b <= 100):
-                    raise ValueError("Błąd - b musi być w zakresie 0–100")
-                if not (0 <= new_a <= 200):
-                    raise ValueError("Błąd - A musi być w zakresie 0–200")
-                if not (0.1 <= new_f <= 10):
-                    raise ValueError("Błąd - f musi być w zakresie 0.1–10")
+    def simulate_and_plot(self):
+        if self.update_parameters():  
+            self.in_out.input_output_plot()
 
-                t_vals = []
-                x_vals = []
-                temp_t = 0
-                x = 0
-                v = 0
+    def update_visibility(self, *args):
+        type = self.input_type.get().lower()
+        if type in ("sine", "square"):
+            self.freq_label.grid()
+            self.freq_entry.grid()
+            self.amp_label.grid()
+            self.amp_entry.grid()
+            self.phase_label.grid()
+            self.phase_entry.grid()
+            self.pulse_width_label.grid_remove()
+            self.pulse_width_entry.grid_remove()
+        elif type in ("triangle", "sawtooth"):
+            self.freq_label.grid()
+            self.freq_entry.grid()
+            self.amp_label.grid()
+            self.amp_entry.grid()
+            self.phase_label.grid_remove()
+            self.phase_entry.grid_remove()
+            self.pulse_width_label.grid_remove()
+            self.pulse_width_entry.grid_remove()
+        elif type in ("step", "impulse"):
+            self.freq_label.grid_remove()
+            self.freq_entry.grid_remove()
+            self.amp_label.grid()
+            self.amp_entry.grid()
+            self.phase_label.grid_remove()
+            self.phase_entry.grid_remove()
+            self.pulse_width_label.grid_remove()
+            self.pulse_width_entry.grid_remove()
+        elif type == "rectangle impulse":
+            self.freq_label.grid_remove()
+            self.freq_entry.grid_remove()
+            self.amp_label.grid()
+            self.amp_entry.grid()
+            self.phase_label.grid_remove()
+            self.phase_entry.grid_remove()
+            self.pulse_width_label.grid()
+            self.pulse_width_entry.grid()
 
-                for _ in range(1000):
-                    y_wheel = new_a * math.sin(2 * math.pi * new_f * temp_t)
-                    dy_wheel = 2 * math.pi * new_f * new_a * math.cos(2 * math.pi * new_f * temp_t)  
-                    y_rel = x - y_wheel
-                    v_rel = v - dy_wheel
-                    a = (-new_k * y_rel - new_b * v_rel) / system.mass
-                    v += a * 0.01
-                    x += v * 0.01
-                    temp_t += 0.01
-                    t_vals.append(temp_t)
-                    x_vals.append(x)
+        if self.error_label and self.error_label["text"]:
+            msg = self.error_label["text"].lower()
+            if "phase" in msg and type not in ("sine", "square"):
+                self.error_label.config(text="", foreground="red")
+                self.phase_entry.delete(0, tk.END)
+                self.phase_entry.insert(0, "0.0")
+            elif "frequency" in msg and type not in ("sine", "square", "triangle", "sawtooth"):
+                self.error_label.config(text="", foreground="red")
+                self.freq_entry.delete(0, tk.END)
+                self.freq_entry.insert(0, "1.0")
+            elif "pulse width" in msg and type != "rectangle impulse":
+                self.error_label.config(text="", foreground="red")
+                self.pulse_width_entry.delete(0, tk.END)
+                self.pulse_width_entry.insert(0, "1.0")
 
-                fig.clear()
-                ax = fig.add_subplot(111)
-                ax.plot(t_vals, x_vals, label='Wy')
-                ax.set_xlabel('Czas [s]')
-                ax.set_ylabel('Przemieszczenie [px]')
-                ax.legend()
-                canvas.draw()
+    def on_input_type_change(self, *args):
+        new_type = self.input_type.get().lower()
+        self.in_out.input_type = new_type
+        self.update_visibility()
 
-                error_label.config(text="", foreground="green")
-
-            except ValueError as e:
-                error_label.config(text=f"Nie można wygenerować wykresu: {str(e)}", foreground="red")
-
+    def open_control_window(self):
         window = tk.Tk()
-        window.title("Zmiana parametrów zawieszenia")
+        window.title("Suspension parameters")
+        window.geometry(f"{self.width}x{self.height}")
+        window.configure(bg="white")
+        self.input_type = tk.StringVar(value="sine")
+        self.input_type.trace_add("write", self.on_input_type_change)
 
-        ttk.Label(window, text="Współczynnik sprężystości (k):").pack()
-        k_entry = ttk.Entry(window)
-        k_entry.insert(0, str(system.spring.k))
-        k_entry.pack()
+        font_settings = ("Helvetica", 11)
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except:
+            pass
+        window.tk.call('tk', 'scaling', 2.5)
 
-        ttk.Label(window, text="Współczynnik tłumienia (b):").pack()
-        b_entry = ttk.Entry(window)
-        b_entry.insert(0, str(system.attenuator.b))
-        b_entry.pack()
+        tk.Label(window, text="Spring constant (k):", bg="white", font=font_settings).pack(pady=(30,10))
+        self.k_entry = tk.Entry(window)
+        self.k_entry.insert(0, str(self.spring.k))
+        self.k_entry.pack()
 
-        ttk.Label(window, text="Amplituda drgań platformy (A):").pack()
-        a_entry = ttk.Entry(window)
-        a_entry.insert(0, str(system.platform_amp))
-        a_entry.pack()
+        tk.Label(window, text="Damping ratio (b):", bg="white", font=font_settings).pack(pady=(0,10))
+        self.b_entry = tk.Entry(window)
+        self.b_entry.insert(0, str(self.attenuator.b))
+        self.b_entry.pack()
 
-        ttk.Label(window, text="Częstotliwość drgań platformy (f):").pack()
-        f_entry = ttk.Entry(window)
-        f_entry.insert(0, str(system.platform_freq))
-        f_entry.pack()
+        tk.Label(window, text="Mass (m):", bg="white", font=font_settings).pack(pady=(0,10))
+        self.m_entry = tk.Entry(window)
+        self.m_entry.insert(0, str(self.in_out.mass))
+        self.m_entry.pack()
 
-        ttk.Button(window, text="Zastosuj", command=update_parameters).pack(pady=5)
-        ttk.Button(window, text="Wykres stabilności", command=output_plot).pack()
+        self.input_type.trace_add("write", self.update_visibility)
 
-        # Miejsce na komunikat
-        error_label = ttk.Label(window, text="", foreground="red")
-        error_label.pack(pady=5)
+        signal_types = ["sine", "square", "sawtooth", "triangle", "rectangle impulse", "impulse", "step"]
+        radio_frame = tk.LabelFrame(window, text="Input signal type", bg="white", font=font_settings, fg="#3e8ef7", bd=2, relief="groove", padx=10, pady=10)
+        radio_frame.pack(pady=(10, 10), padx=20, fill="x")
+        for signal in signal_types:
+            tk.Radiobutton(radio_frame, text=signal, variable=self.input_type, value=signal, bg="white", font=font_settings).pack()
+
+        self.param_frame = tk.Frame(window, bg="white")
+        self.param_frame.pack(pady=10)
+
+        self.amp_label = tk.Label(self.param_frame, text="Amplitude:", bg="white", font=font_settings)
+        self.amp_label.grid(row=0, column=0, padx=10)
+        self.amp_entry = tk.Entry(self.param_frame, width=7)
+        self.amp_entry.insert(0, str(self.in_out.amplitude))
+        self.amp_entry.grid(row=0, column=1, padx=10)
+
+        self.freq_label = tk.Label(self.param_frame, text="Frequency [Hz]:", bg="white", font=font_settings)
+        self.freq_label.grid(row=1, column=0, padx=10)
+        self.freq_entry = tk.Entry(self.param_frame, width=7)
+        self.freq_entry.insert(0, str(self.in_out.frequency))
+        self.freq_entry.grid(row=1, column=1, padx=10)
+
+        self.phase_label = tk.Label(self.param_frame, text="Phase [rad]:", bg="white", font=font_settings)
+        self.phase_label.grid(row=2, column=0, padx=10)
+        self.phase_entry = tk.Entry(self.param_frame, width=7)
+        self.phase_entry.insert(0, str(self.in_out.phase))
+        self.phase_entry.grid(row=2, column=1, padx=10)
+
+        self.pulse_width_label = tk.Label(self.param_frame, text="Pulse width:", bg="white", font=font_settings)
+        self.pulse_width_label.grid(row=3, column=0, padx=10)
+        self.pulse_width_entry = tk.Entry(self.param_frame, width=7)
+        self.pulse_width_entry.insert(0, str(self.in_out.pulse_width))
+        self.pulse_width_entry.grid(row=3, column=1, padx=10)
+
+        self.update_visibility()
+
+        tk.Button(window, text="Simulate", command=self.update_parameters, bg="#3e8ef7", fg="white", padx=15, pady=8).pack(pady=(30,10))
+        tk.Button(window, text="Input and output", command=self.simulate_and_plot, bg="#3e8ef7", fg="white", padx=15, pady=8).pack(pady=(0,20))
+
+        self.error_label = tk.Label(window, text="", bg="white", foreground="red")
+        self.error_label.pack(pady=5)
+
+        #G(s) display
+        """self.fig_dynamic, self.ax_dynamic = plt.subplots(figsize=self.CONFIG['fig_size'])
+        self.canvas_dynamic = FigureCanvasTkAgg(self.fig_dynamic, master=self.root)
+        self.canvas_dynamic.get_tk_widget().pack(pady=(20, 30))
+        self.ax_dynamic.axis('off')
+        self.canvas_dynamic.draw()"""
 
         fig = plt.Figure(figsize=(5, 3), dpi=100)
         canvas = FigureCanvasTkAgg(fig, master=window)
@@ -126,146 +219,10 @@ class ParameterControl:
 
         window.mainloop()
 
-class Drawing:
-    @staticmethod   #umożliwia wywołanie bez tworzenia obiektu
-    def set_2d_projection():
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        gluOrtho2D(0, WIDTH, HEIGHT, 0)  # układ współrzędnych zgodny z Pygame
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-
-    @staticmethod
-    def draw_rect(x, y, w, h, color):
-        glColor3f(*[c / 255.0 for c in color])
-        glBegin(GL_QUADS)
-        glVertex2f(x, y)
-        glVertex2f(x + w, y)
-        glVertex2f(x + w, y + h)
-        glVertex2f(x, y + h)
-        glEnd()
-
-    @staticmethod
-    def draw_line(x1, y1, x2, y2, color, width=1):
-        glLineWidth(width)
-        glColor3f(*[c / 255.0 for c in color])
-        glBegin(GL_LINES)
-        glVertex2f(x1, y1)
-        glVertex2f(x2, y2)
-        glEnd()
-
-    def draw_scene(y_wheel, y_desk, system):
-        glClear(GL_COLOR_BUFFER_BIT)
-        center_x = WIDTH // 2
-        platform_y = HEIGHT // 2 + int(y_wheel)
-        desk_y = int(y_desk)
-        ground_y = HEIGHT - 40
-
-        # Podłoże
-        Drawing.draw_line(0, ground_y, WIDTH, ground_y, (80, 80, 80), 6)
-
-        # Platforma
-        system.draw_platform(center_x, platform_y, ground_y)
-
-        # Koło
-        wheel_bottom_y = platform_y
-        system.wheel.draw_wheel(center_x, wheel_bottom_y)
-        wheel_axis_y = wheel_bottom_y - system.wheel.height // 2
-
-        # Podwozie
-        beam_start_x = center_x + system.wheel.width // 2
-        beam_end_x = beam_start_x + 100
-        Drawing.draw_line(beam_start_x, wheel_axis_y, beam_end_x, wheel_axis_y, (150, 150, 150), 8)
-        Drawing.draw_rect(center_x + 50, desk_y, 200, 20, (180, 180, 180))
-
-        # Sprężyna i tłumik
-        spring_x = beam_end_x - 60
-        attenuator_x = beam_end_x + 10
-        system.spring.draw_spring(spring_x, wheel_axis_y, desk_y)
-        system.attenuator.draw_attenuator(attenuator_x, wheel_axis_y, desk_y)
-
-class Wheel:
-    def __init__(self, width=60, height=100):
-        self.width = width
-        self.height = height
-
-    def draw_wheel(self, center_x, bottom_y):
-        Drawing.draw_rect(center_x - self.width // 2, bottom_y - self.height, self.width, self.height, (40, 40, 40))
-        # Bieżnik opony - poziome linie
-        for y in range(bottom_y - self.height + 5, bottom_y, 10):
-            Drawing.draw_line(center_x - self.width // 2, y, center_x + self.width // 2, y, (100, 100, 100), 2)
-
-class Spring:
-    def __init__(self):
-        self.k = 200.0
-
-    def draw_spring(self, attach_x, wheel_y, desk_y):
-        spring_top = desk_y + 20
-        Drawing.draw_line(attach_x, spring_top, attach_x, wheel_y, (0, 255, 0), 4)
-
-class Attenuator:
-    def __init__(self):
-        self.b = 20.0
-
-    def draw_attenuator(self, attach_x, wheel_y, desk_y):
-        spring_top = desk_y + 20
-        attenuator_y = (spring_top + wheel_y) // 2
-        Drawing.draw_rect(attach_x - 10, attenuator_y - 20, 20, 40, (255, 165, 0))
-
-class InputPlatform:
-    def __init__(self):
-        self.wheel = Wheel()
-        self.spring = Spring()
-        self.attenuator = Attenuator()
-
-        self.platform_freq = 1.0
-        self.platform_amp = 50.0
-        self.mass = 1.0
-
-        self.t = 0.0
-        self.x = 0.0
-        self.v = 0.0
-
-    def platform_motion(self, time):
-        return self.platform_amp * math.sin(2 * math.pi * self.platform_freq * time)
-
-    def update_motion(self, dt):
-        self.t += dt
-        y_wheel = self.platform_motion(self.t)
-        dy_wheel = 2 * math.pi * self.platform_freq * self.platform_amp * math.cos(2 * math.pi * self.platform_freq * self.t)  
-        y_rel = self.x - y_wheel
-        v_rel = self.v - dy_wheel
-        a = (-self.spring.k * y_rel - self.attenuator.b * v_rel) / self.mass
-        self.v += a * dt
-        self.x += self.v * dt
-        return y_wheel, self.x
-
-    def draw_platform(self, center_x, platform_y, ground_y):
-        Drawing.draw_line(center_x, platform_y + 20, center_x, ground_y, (180, 180, 180), 12)
-        Drawing.draw_rect(center_x - 150, platform_y, 300, 20, (100, 100, 255))
-
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT), DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("Symulacja zawieszenia samochodu")
-    Drawing.set_2d_projection()
-    clock = pygame.time.Clock()
-    system = InputPlatform()
-    threading.Thread(target=ParameterControl.open_control_window, args=(system,), daemon=True).start()
-
-    while True:
-        dt = clock.tick(FPS) / 1000.0
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-
-        y_wheel, y_desk = system.update_motion(dt)
-        Drawing.draw_scene(y_wheel, y_desk, system)
-        pygame.display.flip()
+    control = ParameterControl()
+    control.open_control_window()
 
 if __name__ == "__main__":
     main()
-
-
