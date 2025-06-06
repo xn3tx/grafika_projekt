@@ -3,6 +3,8 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import tkinter as tk
+import numpy as np
+import os
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import threading
@@ -21,9 +23,13 @@ class ParameterControl:
         self.spring = Spring()
         self.attenuator = Attenuator()
         self.wheel = Wheel()
+        self.drawing = Drawing(self.spring, self.attenuator, self.wheel)
         self.input_type = "sine"
         self.in_out = InputOutputFunction(self.input_type, self.wheel, self.spring, self.attenuator)
         self.error_label = None
+
+        self.simulation_data = None  # dodaj to!
+        self.frame = 0    
 
     def update_parameters(self):
         try:
@@ -70,9 +76,20 @@ class ParameterControl:
                 self.error_label.config(text=str(e), foreground="red")
             return False
 
+    def update_simulation_data(self):
+        t = np.arange(0.0, 10.0, self.in_out.dt)
+        u = self.in_out.input_function(t)
+        y = self.in_out.euler_output(t)
+        self.simulation_data = (t, u, y)
+        self.frame = 0
+
     def simulate_and_plot(self):
         if self.update_parameters():  
             self.in_out.input_output_plot()
+
+    def simulate(self):
+        if self.update_parameters():  
+            self.update_simulation_data()
 
     def update_visibility(self, *args):
         type = self.input_type.get().lower()
@@ -141,6 +158,7 @@ class ParameterControl:
         self.input_type = tk.StringVar(value="sine")
         self.input_type.trace_add("write", self.on_input_type_change)
 
+        #Better quality of text in window
         font_settings = ("Helvetica", 11)
         try:
             ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -200,29 +218,53 @@ class ParameterControl:
 
         self.update_visibility()
 
-        tk.Button(window, text="Simulate", command=self.update_parameters, bg="#3e8ef7", fg="white", padx=15, pady=8).pack(pady=(30,10))
+        tk.Button(window, text="Simulate", command=self.simulate, bg="#3e8ef7", fg="white", padx=15, pady=8).pack(pady=(30,10))
         tk.Button(window, text="Input and output", command=self.simulate_and_plot, bg="#3e8ef7", fg="white", padx=15, pady=8).pack(pady=(0,20))
 
         self.error_label = tk.Label(window, text="", bg="white", foreground="red")
         self.error_label.pack(pady=5)
-
-        #G(s) display
-        """self.fig_dynamic, self.ax_dynamic = plt.subplots(figsize=self.CONFIG['fig_size'])
-        self.canvas_dynamic = FigureCanvasTkAgg(self.fig_dynamic, master=self.root)
-        self.canvas_dynamic.get_tk_widget().pack(pady=(20, 30))
-        self.ax_dynamic.axis('off')
-        self.canvas_dynamic.draw()"""
-
-        fig = plt.Figure(figsize=(5, 3), dpi=100)
-        canvas = FigureCanvasTkAgg(fig, master=window)
-        canvas.get_tk_widget().pack()
-
         window.mainloop()
 
+
 def main():
-    pygame.init()
     control = ParameterControl()
-    control.open_control_window()
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "1200,200"
+    pygame.init()
+    width = 1500
+    height = 1000
+    screen = pygame.display.set_mode((width, height), DOUBLEBUF | OPENGL)
+    pygame.display.set_caption("Car suspension simulator")
+    control.drawing.set_2d_projection(control.drawing)
+
+    clock = pygame.time.Clock()
+    running = True
+    scale = 50
+    threading.Thread(target=control.open_control_window, daemon=True).start()
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                running = False
+
+        if control.simulation_data is not None:
+            t, u, y = control.simulation_data
+            frame = control.frame
+
+            if frame < len(t):
+                y_wheel = u[frame] * scale
+                y_desk = (y[frame] + u[frame]) * scale
+                control.frame += 1
+            else:
+                y_wheel = 0
+                y_desk = 0
+        else:
+            y_wheel = 0
+            y_desk = 0
+
+        control.drawing.draw_scene(y_wheel, y_desk)
+        pygame.display.flip()
+        clock.tick(control.fps)
+    pygame.quit()
 
 if __name__ == "__main__":
     main()
