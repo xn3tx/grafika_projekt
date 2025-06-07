@@ -34,8 +34,9 @@ class InputOutputFunction:
             return self.amplitude * (1 - 4 * np.abs(t_mod / T - 0.5))
         elif self.input_type == "impulse":
             u = np.zeros_like(t)
+            dt = t[1] - t[0]
             idx = np.argmin(np.abs(t - 0.01))
-            u[idx] = self.amplitude
+            u[idx] = self.amplitude / dt  
             return u
         elif self.input_type == "step":
             return self.amplitude * np.ones_like(t)
