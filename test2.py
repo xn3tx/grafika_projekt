@@ -46,7 +46,7 @@ def draw_3d_spring(start_y=0, end_y=10, wire_radius=0.05, spring_radius=1.0, coi
             ]
 
         glBegin(GL_TRIANGLE_STRIP)
-        glColor3f(0, 191, 255)  # COLOUR https://www.w3schools.com/colors/colors_converter.asp
+        glColor3f(150, 150, 150)  # COLOUR https://www.w3schools.com/colors/colors_converter.asp
         for j in range(circle_resolution + 1):
             theta = 2 * math.pi * j / circle_resolution
             dx = wire_radius * math.cos(theta)
@@ -183,3 +183,133 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+"""import pygame
+from pygame.locals import *
+from OpenGL.GL import *
+from OpenGL.GLU import *
+import math
+
+def draw_3d_spring(start_y=0, end_y=10, wire_radius=0.05, spring_radius=1.0,
+                   coils=10, segments_per_coil=20, circle_resolution=8):
+    height = end_y - start_y
+    total_segments = coils * segments_per_coil
+
+    for i in range(total_segments):
+        t0 = i / total_segments
+        t1 = (i + 1) / total_segments
+
+        angle0 = 2 * math.pi * coils * t0
+        angle1 = 2 * math.pi * coils * t1
+
+        center0 = [
+            spring_radius * math.cos(angle0),
+            start_y + t0 * height,
+            spring_radius * math.sin(angle0)
+        ]
+        center1 = [
+            spring_radius * math.cos(angle1),
+            start_y + t1 * height,
+            spring_radius * math.sin(angle1)
+        ]
+
+        tangent = [center1[j] - center0[j] for j in range(3)]
+        length = math.sqrt(sum(t ** 2 for t in tangent))
+        tangent = [t / length for t in tangent]
+
+        normal = [-tangent[2], 0, tangent[0]]
+        binormal = [
+            tangent[1] * normal[2] - tangent[2] * normal[1],
+            tangent[2] * normal[0] - tangent[0] * normal[2],
+            tangent[0] * normal[1] - tangent[1] * normal[0]
+        ]
+
+        def point_on_circle(center, normal, binormal, dx, dy):
+            return [
+                center[k] + dx * normal[k] + dy * binormal[k]
+                for k in range(3)
+            ]
+
+        glBegin(GL_TRIANGLE_STRIP)
+        glColor3f(0.0, 0.7, 1.0)  # Cyan
+        for j in range(circle_resolution + 1):
+            theta = 2 * math.pi * j / circle_resolution
+            dx = wire_radius * math.cos(theta)
+            dy = wire_radius * math.sin(theta)
+            p1 = point_on_circle(center0, normal, binormal, dx, dy)
+            p2 = point_on_circle(center1, normal, binormal, dx, dy)
+            glVertex3f(*p1)
+            glVertex3f(*p2)
+        glEnd()
+
+def main():
+    pygame.init()
+    display = (800, 600)
+    pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
+    pygame.display.set_caption("3D Spring with Camera Control")
+
+    glEnable(GL_DEPTH_TEST)
+    glClearColor(0.1, 0.1, 0.1, 1.0)
+
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluPerspective(45, display[0] / display[1], 0.1, 100.0)
+
+    glMatrixMode(GL_MODELVIEW)
+
+    clock = pygame.time.Clock()
+
+    # Camera state
+    camera_x = 0.0
+    move_left, move_right = False, False
+    camera_speed = 5.0  # units per second
+
+    angle = 0  # for spring rotation
+
+    running = True
+    while running:
+        dt = clock.tick(60) / 1000.0
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                running = False
+            elif event.type == KEYDOWN:
+                if event.key == K_a:
+                    move_left = True
+                elif event.key == K_d:
+                    move_right = True
+            elif event.type == KEYUP:
+                if event.key == K_a:
+                    move_left = False
+                elif event.key == K_d:
+                    move_right = False
+
+        # Update camera position
+        if move_left:
+            camera_x -= camera_speed * dt
+        if move_right:
+            camera_x += camera_speed * dt
+
+        angle += 30 * dt  # Rotate spring slowly
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadIdentity()
+
+        # Move camera left/right while always looking at the spring center
+        gluLookAt(camera_x, 5, 25,  # camera position
+                  camera_x, 5, 0,   # look-at point
+                  0, 1, 0)          # up vector
+
+        glPushMatrix()
+        glTranslatef(0.0, 0.0, 0.0)  # center the spring vertically
+        glRotatef(angle, 0, 1, 0)     # rotate the spring
+        draw_3d_spring()
+        glPopMatrix()
+
+        pygame.display.flip()
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
+"""
