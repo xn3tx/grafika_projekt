@@ -6,6 +6,7 @@ import numpy as np
 import math
 import time
 
+
 # External dynamic model
 class Spring:
     def __init__(self, k):
@@ -104,6 +105,111 @@ def draw_3d_spring(start_y, end_y, wire_radius=0.05, spring_radius=0.5,
             glVertex3f(*p1)
             glVertex3f(*p2)
         glEnd()
+        
+def draw_cylinder(y1, y2, radius):
+    segments = 20
+    glBegin(GL_QUAD_STRIP)
+    for i in range(segments + 1):
+        theta = 2.0 * math.pi * i / segments
+        x = radius * math.cos(theta)
+        z = radius * math.sin(theta)
+        glVertex3f(x, y1, z)
+        glVertex3f(x, y2, z)
+    glEnd()
+  
+def damper(start_y, end_y, damper_radius=0.5, rod_radius=0.1, body_height=2.0):
+    # Draw the rod (full height)
+    glColor3f(0.7, 0.7, 0.7)  # light gray
+    draw_cylinder(start_y, end_y, rod_radius)
+
+    # Draw damper body (centered between start_y and end_y)
+    center_y = (start_y + end_y) / 2
+    body_start = center_y - body_height / 2
+    body_end = center_y + body_height / 2
+
+    glColor3f(1.0, 0.0, 0.0)  # red
+    draw_cylinder(body_start, body_end, damper_radius)
+
+def draw_rod(start_y, rod_length=4.0, rod_radius=0.25, segments=32):
+
+    half_length = rod_length / 2.0
+    glColor3f(0.7, 0.7, 0.7)  # reddish brown
+
+    # Side surface
+    glBegin(GL_QUAD_STRIP)
+    for i in range(segments + 1):
+        theta = 2 * np.pi * i / segments
+        x = np.cos(theta)
+        y = np.sin(theta)
+        glVertex3f(-half_length, start_y + rod_radius * y, rod_radius * x)
+        glVertex3f(half_length, start_y + rod_radius * y, rod_radius * x)
+    glEnd()
+
+    # Left cap
+    glBegin(GL_POLYGON)
+    for i in range(segments):
+        theta = 2 * np.pi * i / segments
+        x = np.cos(theta)
+        y = np.sin(theta)
+        glVertex3f(-half_length, start_y + rod_radius * y, rod_radius * x)
+    glEnd()
+
+    # Right cap
+    glBegin(GL_POLYGON)
+    for i in range(segments):
+        theta = 2 * np.pi * i / segments
+        x = np.cos(theta)
+        y = np.sin(theta)
+        glVertex3f(half_length, start_y + rod_radius * y, rod_radius * x)
+    glEnd()
+
+
+def draw_platform(y, width=3.0, depth=3.0, thickness=0.5):
+    hw = width / 2
+    hd = depth / 2
+    h = thickness
+
+    glColor3f(0.0, 0.0, 1.0)  # green
+    glBegin(GL_QUADS)
+
+    # Top face
+    glVertex3f(-hw, y + h, -hd)
+    glVertex3f(hw, y + h, -hd)
+    glVertex3f(hw, y + h, hd)
+    glVertex3f(-hw, y + h, hd)
+
+    # Bottom face
+    glVertex3f(-hw, y, -hd)
+    glVertex3f(hw, y, -hd)
+    glVertex3f(hw, y, hd)
+    glVertex3f(-hw, y, hd)
+
+    # Front face
+    glVertex3f(-hw, y, hd)
+    glVertex3f(hw, y, hd)
+    glVertex3f(hw, y + h, hd)
+    glVertex3f(-hw, y + h, hd)
+
+    # Back face
+    glVertex3f(-hw, y, -hd)
+    glVertex3f(hw, y, -hd)
+    glVertex3f(hw, y + h, -hd)
+    glVertex3f(-hw, y + h, -hd)
+
+    # Left face
+    glVertex3f(-hw, y, -hd)
+    glVertex3f(-hw, y, hd)
+    glVertex3f(-hw, y + h, hd)
+    glVertex3f(-hw, y + h, -hd)
+
+    # Right face
+    glVertex3f(hw, y, -hd)
+    glVertex3f(hw, y, hd)
+    glVertex3f(hw, y + h, hd)
+    glVertex3f(hw, y + h, -hd)
+
+    glEnd()
+
 
 # Main app
 def main():
@@ -172,6 +278,9 @@ def main():
         end_y = (start_y + output[current_index]) *2 #*2 bc i could not see the spring coils
 
         draw_3d_spring(start_y=start_y, end_y=end_y)
+        damper(start_y, end_y, damper_radius=0.3, rod_radius=0.05)
+        draw_platform(end_y)
+        draw_rod(start_y)
 
         pygame.display.flip()
 
