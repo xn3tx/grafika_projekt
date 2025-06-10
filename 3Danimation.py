@@ -133,7 +133,7 @@ def damper(start_y, end_y, damper_radius=0.5, rod_radius=0.1, body_height=2.0):
 def draw_rod(start_y, rod_length=4.0, rod_radius=0.25, segments=32):
 
     half_length = rod_length / 2.0
-    glColor3f(0.7, 0.7, 0.7)  # reddish brown
+    glColor3f(0.4, 0.4, 0.4)  # reddish brown
 
     # Side surface
     glBegin(GL_QUAD_STRIP)
@@ -211,6 +211,40 @@ def draw_platform(y, width=3.0, depth=3.0, thickness=0.5):
     glEnd()
 
 
+def draw_wheel(start_y, wheel_radius, wheel_thickness, colorR,colorG,colorB,rod_length=4.0, segments=32):
+
+    center_x = -rod_length / 2.0  # Left end of the rod
+
+    # Side surface (wheel body)
+    glColor3f(colorR,colorG,colorB)  # dark gray
+    glBegin(GL_QUAD_STRIP)
+    for i in range(segments + 1):
+        theta = 2 * np.pi * i / segments
+        x = wheel_radius * np.cos(theta)
+        y = wheel_radius * np.sin(theta)
+        glVertex3f(center_x - wheel_thickness/2, start_y + y, x)
+        glVertex3f(center_x + wheel_thickness/2, start_y + y, x)
+    glEnd()
+
+    # Left cap
+    glBegin(GL_POLYGON)
+    for i in range(segments):
+        theta = 2 * np.pi * i / segments
+        x = wheel_radius * np.cos(theta)
+        y = wheel_radius * np.sin(theta)
+        glVertex3f(center_x - wheel_thickness/2, start_y + y, x)
+    glEnd()
+
+    # Right cap
+    glBegin(GL_POLYGON)
+    for i in range(segments):
+        theta = 2 * np.pi * i / segments
+        x = wheel_radius * np.cos(theta)
+        y = wheel_radius * np.sin(theta)
+        glVertex3f(center_x + wheel_thickness/2, start_y + y, x)
+    glEnd()
+
+
 # Main app
 def main():
     pygame.init()
@@ -281,6 +315,9 @@ def main():
         damper(start_y, end_y, damper_radius=0.3, rod_radius=0.05)
         draw_platform(end_y)
         draw_rod(start_y)
+        draw_wheel(start_y,2.0,1.0,0.7,0.7,0.7)
+        draw_wheel(start_y,3.0,0.9,0.3,0.3,0.3)
+
 
         pygame.display.flip()
 
