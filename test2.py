@@ -2,314 +2,607 @@ import pygame
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
+import numpy as np
 import math
+import time
+import matplotlib.pyplot as plt
+import tkinter as tk
+import numpy as np
+import os
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import threading
+import ctypes
 
-def draw_3d_spring(start_y=0, end_y=10, wire_radius=0.05, spring_radius=1.0, coils=10, segments_per_coil=20, circle_resolution=8):
-    height = end_y - start_y
-    total_segments = coils * segments_per_coil
 
-    for i in range(total_segments):
-        t0 = i / total_segments
-        t1 = (i + 1) / total_segments
-
-        angle0 = 2 * math.pi * coils * t0
-        angle1 = 2 * math.pi * coils * t1
-
-        center0 = [ #The first and sec point of the little line we're drawing
-            spring_radius * math.cos(angle0),
-            start_y + t0 * height,
-            spring_radius * math.sin(angle0)
-        ]
-        center1 = [
-            spring_radius * math.cos(angle1),
-            start_y + t1 * height,
-            spring_radius * math.sin(angle1)
-        ]
-
-        # tangent = styczna althought technically its wersor(unit vector) my bad
-        tangent = [center1[j] - center0[j] for j in range(3)]
-        length = math.sqrt(sum(t ** 2 for t in tangent))
-        tangent = [t / length for t in tangent]
-
-        # wektor normalny = normal; binormal = tangent x normal from lecture https://drive.google.com/drive/folders/1RqL5Nifwung5YjaiZQz-Y2T6GUSKCUzP
-        normal = [-tangent[2], 0, tangent[0]]
-        binormal = [
-            tangent[1] * normal[2] - tangent[2] * normal[1],
-            tangent[2] * normal[0] - tangent[0] * normal[2],
-            tangent[0] * normal[1] - tangent[1] * normal[0]
-        ]
-
-        def point_on_circle(center, normal, binormal, dx, dy):
-            return [
-                center[k] + dx * normal[k] + dy * binormal[k]
-                for k in range(3)
-            ]
-
-        glBegin(GL_TRIANGLE_STRIP)
-        glColor3f(150, 150, 150)  # COLOUR https://www.w3schools.com/colors/colors_converter.asp
-        for j in range(circle_resolution + 1):
-            theta = 2 * math.pi * j / circle_resolution
-            dx = wire_radius * math.cos(theta)
-            dy = wire_radius * math.sin(theta)
-            p1 = point_on_circle(center0, normal, binormal, dx, dy)
-            p2 = point_on_circle(center1, normal, binormal, dx, dy)
-            glVertex3f(*p1)
-            glVertex3f(*p2)
+class Attenuator:
+    def __init__(self):
+        self.b = 20.0
+    
+    def draw_cylinder(self,y1, y2, radius):
+        segments = 20
+        glBegin(GL_QUAD_STRIP)
+        for i in range(segments + 1):
+            theta = 2.0 * math.pi * i / segments
+            x = radius * math.cos(theta)
+            z = radius * math.sin(theta)
+            glVertex3f(x, y1, z)
+            glVertex3f(x, y2, z)
         glEnd()
+    
+    def damper(self,start_y, end_y, damper_radius=0.5, rod_radius=0.1, body_height=1.2):
+        # Draw the rod (full height)
+        glColor3f(0.7, 0.7, 0.7)  # light gray
+        self.draw_cylinder(start_y, end_y, rod_radius)
 
-def main():
-    pygame.init()
-    display = (800, 600)
-    pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("Window TEST2")
+        # Draw damper body (centered between start_y and end_y)
+        center_y = (start_y + end_y) / 2
+        body_start = center_y - body_height / 2
+        body_end = center_y + body_height / 2
 
-    glEnable(GL_DEPTH_TEST) # objects closer concleal the further ones
-    gluPerspective(45, display[0] / display[1], 0.1, 100.0)
-    glTranslatef(0.0, -5.0, -20.0) # X, Y, Z coords for the "camera" view
+        glColor3f(1.0, 0.0, 0.0)  # red
+        self.draw_cylinder(body_start, body_end, damper_radius)
+        
+class Spring:
+    def __init__(self):
+        self.k = 200.0
 
-    clock = pygame.time.Clock()
-    running = True
-
-    while running:
-        dt = clock.tick(60) / 1000.0
-
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                running = False
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-        glPushMatrix()
-        glRotatef(pygame.time.get_ticks() * 0.05, 0, 1, 0)  # Spins = to check whether 3D is correct
-        draw_3d_spring()
-        glPopMatrix()
-
-        pygame.display.flip()
-
-    pygame.quit()
-
-if __name__ == "__main__":
-    main()
-
-import pygame
-from pygame.locals import *
-from OpenGL.GL import *
-from OpenGL.GLU import *
-import math
-
-def draw_3d_spring(start_y=0, end_y=10, wire_radius=0.05, spring_radius=1.0, coils=10, segments_per_coil=20, circle_resolution=8):
-    height = end_y - start_y
-    total_segments = coils * segments_per_coil
-
-    for i in range(total_segments):
-        t0 = i / total_segments
-        t1 = (i + 1) / total_segments
-
-        angle0 = 2 * math.pi * coils * t0
-        angle1 = 2 * math.pi * coils * t1
-
-        center0 = [ #The first and sec point of the little line we're drawing
-            spring_radius * math.cos(angle0),
-            start_y + t0 * height,
-            spring_radius * math.sin(angle0)
-        ]
-        center1 = [
-            spring_radius * math.cos(angle1),
-            start_y + t1 * height,
-            spring_radius * math.sin(angle1)
-        ]
-
-        # tangent = styczna althought technically its wersor(unit vector) my bad
-        tangent = [center1[j] - center0[j] for j in range(3)]
-        length = math.sqrt(sum(t ** 2 for t in tangent))
-        tangent = [t / length for t in tangent]
-
-        # wektor normalny = normal; binormal = tangent x normal from lecture https://drive.google.com/drive/folders/1RqL5Nifwung5YjaiZQz-Y2T6GUSKCUzP
-        normal = [-tangent[2], 0, tangent[0]]
-        binormal = [
-            tangent[1] * normal[2] - tangent[2] * normal[1],
-            tangent[2] * normal[0] - tangent[0] * normal[2],
-            tangent[0] * normal[1] - tangent[1] * normal[0]
-        ]
-
-        def point_on_circle(center, normal, binormal, dx, dy):
-            return [
-                center[k] + dx * normal[k] + dy * binormal[k]
-                for k in range(3)
-            ]
-
-        glBegin(GL_TRIANGLE_STRIP)
-        glColor3f(0, 191, 255)  # COLOUR https://www.w3schools.com/colors/colors_converter.asp
-        for j in range(circle_resolution + 1):
-            theta = 2 * math.pi * j / circle_resolution
-            dx = wire_radius * math.cos(theta)
-            dy = wire_radius * math.sin(theta)
-            p1 = point_on_circle(center0, normal, binormal, dx, dy)
-            p2 = point_on_circle(center1, normal, binormal, dx, dy)
-            glVertex3f(*p1)
-            glVertex3f(*p2)
-        glEnd()
-
-def main():
-    pygame.init()
-    display = (800, 600)
-    pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("Window TEST2")
-
-    glEnable(GL_DEPTH_TEST) # objects closer concleal the further ones
-    gluPerspective(45, display[0] / display[1], 0.1, 100.0)
-    glTranslatef(0.0, -5.0, -20.0) # X, Y, Z coords for the "camera" view
-
-    clock = pygame.time.Clock()
-    running = True
-
-    while running:
-        dt = clock.tick(60) / 1000.0
-
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                running = False
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-        glPushMatrix()
-        glRotatef(pygame.time.get_ticks() * 0.05, 0, 1, 0)  # Spins = to check whether 3D is correct
-        draw_3d_spring()
-        glPopMatrix()
-
-        pygame.display.flip()
-
-    pygame.quit()
-
-if __name__ == "__main__":
-    main()
-
-
-"""import pygame
-from pygame.locals import *
-from OpenGL.GL import *
-from OpenGL.GLU import *
-import math
-
-def draw_3d_spring(start_y=0, end_y=10, wire_radius=0.05, spring_radius=1.0,
+    def draw_3d_spring(self,start_y, end_y, wire_radius=0.05, spring_radius=0.5,
                    coils=10, segments_per_coil=20, circle_resolution=8):
-    height = end_y - start_y
-    total_segments = coils * segments_per_coil
+        height = end_y - start_y
+        total_segments = coils * segments_per_coil
 
-    for i in range(total_segments):
-        t0 = i / total_segments
-        t1 = (i + 1) / total_segments
+        for i in range(total_segments):
+            t0 = i / total_segments
+            t1 = (i + 1) / total_segments
 
-        angle0 = 2 * math.pi * coils * t0
-        angle1 = 2 * math.pi * coils * t1
+            angle0 = 2 * math.pi * coils * t0
+            angle1 = 2 * math.pi * coils * t1
 
-        center0 = [
-            spring_radius * math.cos(angle0),
-            start_y + t0 * height,
-            spring_radius * math.sin(angle0)
-        ]
-        center1 = [
-            spring_radius * math.cos(angle1),
-            start_y + t1 * height,
-            spring_radius * math.sin(angle1)
-        ]
-
-        tangent = [center1[j] - center0[j] for j in range(3)]
-        length = math.sqrt(sum(t ** 2 for t in tangent))
-        tangent = [t / length for t in tangent]
-
-        normal = [-tangent[2], 0, tangent[0]]
-        binormal = [
-            tangent[1] * normal[2] - tangent[2] * normal[1],
-            tangent[2] * normal[0] - tangent[0] * normal[2],
-            tangent[0] * normal[1] - tangent[1] * normal[0]
-        ]
-
-        def point_on_circle(center, normal, binormal, dx, dy):
-            return [
-                center[k] + dx * normal[k] + dy * binormal[k]
-                for k in range(3)
+            center0 = [
+                spring_radius * math.cos(angle0),
+                start_y + t0 * height,
+                spring_radius * math.sin(angle0)
+            ]
+            center1 = [
+                spring_radius * math.cos(angle1),
+                start_y + t1 * height,
+                spring_radius * math.sin(angle1)
             ]
 
-        glBegin(GL_TRIANGLE_STRIP)
-        glColor3f(0.0, 0.7, 1.0)  # Cyan
-        for j in range(circle_resolution + 1):
-            theta = 2 * math.pi * j / circle_resolution
-            dx = wire_radius * math.cos(theta)
-            dy = wire_radius * math.sin(theta)
-            p1 = point_on_circle(center0, normal, binormal, dx, dy)
-            p2 = point_on_circle(center1, normal, binormal, dx, dy)
-            glVertex3f(*p1)
-            glVertex3f(*p2)
+            tangent = [center1[j] - center0[j] for j in range(3)]
+            length = math.sqrt(sum(t ** 2 for t in tangent))
+            tangent = [t / length for t in tangent]
+
+            normal = [-tangent[2], 0, tangent[0]]
+            binormal = [
+                tangent[1] * normal[2] - tangent[2] * normal[1],
+                tangent[2] * normal[0] - tangent[0] * normal[2],
+                tangent[0] * normal[1] - tangent[1] * normal[0]
+            ]
+
+            def point_on_circle(center, normal, binormal, dx, dy):
+                return [
+                    center[k] + dx * normal[k] + dy * binormal[k]
+                    for k in range(3)
+                ]
+
+            glBegin(GL_TRIANGLE_STRIP)
+            glColor3f(140, 140, 140)
+            for j in range(circle_resolution + 1):
+                theta = 2 * math.pi * j / circle_resolution
+                dx = wire_radius * math.cos(theta)
+                dy = wire_radius * math.sin(theta)
+                p1 = point_on_circle(center0, normal, binormal, dx, dy)
+                p2 = point_on_circle(center1, normal, binormal, dx, dy)
+                glVertex3f(*p1)
+                glVertex3f(*p2)
+            glEnd()
+
+class Wheel:
+    def __init__(self):
+        pass
+
+    def draw_wheel(self,start_y, wheel_radius, wheel_thickness, colorR,colorG,colorB,rod_length=4.0, segments=32):
+
+        center_x = -rod_length / 2.0  # Left end of the rod
+
+        # Side surface (wheel body)
+        glColor3f(colorR,colorG,colorB)  # dark gray
+        glBegin(GL_QUAD_STRIP)
+        for i in range(segments + 1):
+            theta = 2 * np.pi * i / segments
+            x = wheel_radius * np.cos(theta)
+            y = wheel_radius * np.sin(theta)
+            glVertex3f(center_x - wheel_thickness/2, start_y + y, x)
+            glVertex3f(center_x + wheel_thickness/2, start_y + y, x)
         glEnd()
+
+        # Left cap
+        glBegin(GL_POLYGON)
+        for i in range(segments):
+            theta = 2 * np.pi * i / segments
+            x = wheel_radius * np.cos(theta)
+            y = wheel_radius * np.sin(theta)
+            glVertex3f(center_x - wheel_thickness/2, start_y + y, x)
+        glEnd()
+
+        # Right cap
+        glBegin(GL_POLYGON)
+        for i in range(segments):
+            theta = 2 * np.pi * i / segments
+            x = wheel_radius * np.cos(theta)
+            y = wheel_radius * np.sin(theta)
+            glVertex3f(center_x + wheel_thickness/2, start_y + y, x)
+        glEnd()
+
+class Other_elements:
+    def __init__(self):
+        pass
+    
+
+    def draw_rod(self,start_y, rod_length=4.0, rod_radius=0.25, segments=32):
+
+        half_length = rod_length / 2.0
+        glColor3f(0.4, 0.4, 0.4)  # reddish brown
+
+        # Side surface
+        glBegin(GL_QUAD_STRIP)
+        for i in range(segments + 1):
+            theta = 2 * np.pi * i / segments
+            x = np.cos(theta)
+            y = np.sin(theta)
+            glVertex3f(-half_length, start_y + rod_radius * y, rod_radius * x)
+            glVertex3f(half_length, start_y + rod_radius * y, rod_radius * x)
+        glEnd()
+
+        # Left cap
+        glBegin(GL_POLYGON)
+        for i in range(segments):
+            theta = 2 * np.pi * i / segments
+            x = np.cos(theta)
+            y = np.sin(theta)
+            glVertex3f(-half_length, start_y + rod_radius * y, rod_radius * x)
+        glEnd()
+
+        # Right cap
+        glBegin(GL_POLYGON)
+        for i in range(segments):
+            theta = 2 * np.pi * i / segments
+            x = np.cos(theta)
+            y = np.sin(theta)
+            glVertex3f(half_length, start_y + rod_radius * y, rod_radius * x)
+        glEnd()
+
+
+    def draw_platform(self,y, width, depth, thickness,x,c_r,c_g,c_b):
+        hw = width / 2 #half-width
+        hd = depth / 2 #half-depth
+        h = thickness
+
+        glColor3f(c_r,c_g,c_b) 
+        glBegin(GL_QUADS)
+
+        # Top face
+        glVertex3f(-hw -x, y + h, -hd)
+        glVertex3f(hw-x, y + h, -hd)
+        glVertex3f(hw-x, y + h, hd)
+        glVertex3f(-hw-x, y + h, hd)
+
+        # Bottom face
+        glVertex3f(-hw-x, y, -hd)
+        glVertex3f(hw-x, y, -hd)
+        glVertex3f(hw-x, y, hd)
+        glVertex3f(-hw-x, y, hd)
+
+        # Front face
+        glVertex3f(-hw-x, y, hd)
+        glVertex3f(hw-x, y, hd)
+        glVertex3f(hw-x, y + h, hd)
+        glVertex3f(-hw-x, y + h, hd)
+
+        # Back face
+        glVertex3f(-hw-x, y, -hd)
+        glVertex3f(hw-x, y, -hd)
+        glVertex3f(hw-x, y + h, -hd)
+        glVertex3f(-hw-x, y + h, -hd)
+
+        # Left face
+        glVertex3f(-hw-x, y, -hd)
+        glVertex3f(-hw-x, y, hd)
+        glVertex3f(-hw-x, y + h, hd)
+        glVertex3f(-hw-x, y + h, -hd)
+
+        # Right face
+        glVertex3f(hw-x, y, -hd)
+        glVertex3f(hw-x, y, hd)
+        glVertex3f(hw-x, y + h, hd)
+        glVertex3f(hw-x, y + h, -hd)
+
+        glEnd()
+        
+class InputOutputFunction:
+    def __init__(self, input_type, wheel, spring, attenuator):
+        self.wheel = wheel
+        self.spring = spring
+        self.attenuator = attenuator
+        self.input_type = input_type
+        self.dt = 0.01
+
+        self.frequency = 1.0
+        self.amplitude = 1.0
+        self.phase = 0.0
+        self.pulse_width = 1.0
+        self.mass = 1.0
+
+
+    def input_function(self, t):
+        if self.input_type == "sine":
+            return self.amplitude * np.sin(2 * np.pi * self.frequency * t + self.phase)
+        elif self.input_type == "sawtooth":
+            T = 1/ self.frequency
+            return (2 * self.amplitude / T) * (t % T) - self.amplitude
+        elif self.input_type == "square":
+            temp=np.sin(2 * np.pi * self.frequency * t + self.phase)
+            return self.amplitude * np.where(temp >= 0, 1, -1)
+        elif self.input_type == "rectangle impulse":
+            return self.amplitude * np.where((t>0) & (t<self.pulse_width), 1, 0)
+        elif self.input_type == "triangle":
+            T = 1/ self.frequency
+            t_mod = np.mod(t,T)
+            return self.amplitude * (1 - 4 * np.abs(t_mod / T - 0.5))
+        elif self.input_type == "impulse":
+            u = np.zeros_like(t)
+            dt = t[1] - t[0]
+            idx = np.argmin(np.abs(t - 0.01))
+            u[idx] = self.amplitude / dt  
+            return u
+        elif self.input_type == "step":
+            return self.amplitude * np.ones_like(t)
+        
+    def euler_output(self, t):
+        dt = self.dt
+        k = self.spring.k
+        b = self.attenuator.b
+        m = self.mass
+
+        u = self.input_function(t)
+        N = len(t)
+        y = np.zeros(N)
+        dy1 = np.zeros(N)
+        dy2 = np.zeros(N)
+
+        for k in range(2, N):
+            dy2[k] = (-k*y[k-1] - b*dy1[k-1] + u[k]) / m
+            dy1[k] = dy1[k-1] + dt * dy2[k]
+            y[k] = y[k-1] + dt * dy1[k]
+        return y
+    
+    def simulate_system(self, t_start, t_end):
+        dt=self.dt
+        t = np.arange(t_start, t_end + dt, dt) 
+        u = self.input_function(t) 
+        y = self.euler_output(t)  
+        return t, u, y
+
+    def input_output_plot(self):
+        t, u, y = self.simulate_system(0.0, 10.0)
+        plt.figure(figsize=(10, 5))
+        plt.suptitle("Input and Output Plot", fontsize=16)
+
+        plt.figtext(
+        0.5, 0.91,  # position in window
+        rf"$G(s) = \frac{{1}}{{{self.mass:.1f}s^2 + {self.attenuator.b:.1f}s + {self.spring.k:.1f}}}$",
+        ha='center', va='top',
+        fontsize=14, color="black"
+    )
+
+        plt.subplot(2, 1, 1)
+        plt.plot(t, u, label="u(t)")
+        plt.xlabel("Time [s]")
+        plt.ylabel("u(t)")
+        plt.title("Input plot")
+        plt.grid(True)
+        plt.legend()
+
+        plt.subplot(2, 1, 2)
+        plt.plot(t, y, label="y(t)")
+        plt.xlabel("Time [s]")
+        plt.ylabel("y(t)")
+        plt.title("Output plot")
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout(rect=[0, 0, 1, 0.88])
+        plt.show()
+        
+class ParameterControl:
+    def __init__(self):
+        self.width = 800
+        self.height = 1050
+        self.fps = 60
+        self.spring = Spring()
+        self.attenuator = Attenuator()
+        self.wheel = Wheel()
+        self.input_type = "sine"
+        self.in_out = InputOutputFunction(self.input_type, self.wheel, self.spring, self.attenuator)
+        self.error_label = None
+
+        self.simulation_data = None  # dodaj to!
+        self.frame = 0    
+
+    def update_parameters(self):
+        try:
+            new_k = float(self.k_entry.get())
+            new_b = float(self.b_entry.get())
+            new_a = float(self.amp_entry.get())
+            new_f = float(self.freq_entry.get())
+            new_m = float(self.m_entry.get())
+            new_phase = float(self.phase_entry.get())
+            new_pulse_width = float(self.pulse_width_entry.get())
+            new_type = self.input_type.get().lower()
+
+            if not (10.0 <= new_k <= 1000.0):
+                raise ValueError("Error - k must be in range [10, 1000]")
+            if not (0.0 <= new_b <= 100.0):
+                raise ValueError("Error - b must be in range [0, 100]")
+            if not (0.0 <= new_a <= 200.0):
+                raise ValueError("Error - A must be in range [0, 200]")
+            if not (0.1 <= new_f <= 10.0):
+                raise ValueError("Error - f must be in range [0.1, 10]")
+            if not (-3.14 <= new_phase <= 3.14):
+                raise ValueError("Error - phase must be in range [-π, π]")
+            if not (0.0 <= new_pulse_width <= 10.0):
+                raise ValueError("Error - pulse width must be in range [0,10]")
+            if not (1.0 <= new_m <= 1000.0):
+                raise ValueError("Error - mass must be in range [1,1000]")
+
+            #Save correct values
+            self.spring.k = new_k
+            self.attenuator.b = new_b
+            self.in_out.frequency = new_f
+            self.in_out.amplitude = new_a
+            self.in_out.phase = new_phase
+            self.in_out.pulse_width = new_pulse_width
+            self.in_out.mass = new_m
+            self.in_out.input_type = new_type
+
+            if self.error_label is not None:
+                self.error_label.config(text="Correct parameters", foreground="green")
+            return True
+
+        except ValueError as e:
+            if self.error_label is not None:
+                self.error_label.config(text=str(e), foreground="red")
+            return False
+
+    def update_simulation_data(self):
+        t = np.arange(0.0, 10.0, self.in_out.dt)
+        u = self.in_out.input_function(t)
+        y = self.in_out.euler_output(t)
+        self.simulation_data = (t, u, y)
+        self.frame = 0
+
+    def simulate_and_plot(self):
+        if self.update_parameters():  
+            self.in_out.input_output_plot()
+
+    def simulate(self):
+        if self.update_parameters():  
+            self.update_simulation_data()
+
+    def update_visibility(self, *args):
+        type = self.input_type.get().lower()
+        if type in ("sine", "square"):
+            self.freq_label.grid()
+            self.freq_entry.grid()
+            self.amp_label.grid()
+            self.amp_entry.grid()
+            self.phase_label.grid()
+            self.phase_entry.grid()
+            self.pulse_width_label.grid_remove()
+            self.pulse_width_entry.grid_remove()
+        elif type in ("triangle", "sawtooth"):
+            self.freq_label.grid()
+            self.freq_entry.grid()
+            self.amp_label.grid()
+            self.amp_entry.grid()
+            self.phase_label.grid_remove()
+            self.phase_entry.grid_remove()
+            self.pulse_width_label.grid_remove()
+            self.pulse_width_entry.grid_remove()
+        elif type in ("step", "impulse"):
+            self.freq_label.grid_remove()
+            self.freq_entry.grid_remove()
+            self.amp_label.grid()
+            self.amp_entry.grid()
+            self.phase_label.grid_remove()
+            self.phase_entry.grid_remove()
+            self.pulse_width_label.grid_remove()
+            self.pulse_width_entry.grid_remove()
+        elif type == "rectangle impulse":
+            self.freq_label.grid_remove()
+            self.freq_entry.grid_remove()
+            self.amp_label.grid()
+            self.amp_entry.grid()
+            self.phase_label.grid_remove()
+            self.phase_entry.grid_remove()
+            self.pulse_width_label.grid()
+            self.pulse_width_entry.grid()
+
+        if self.error_label and self.error_label["text"]:
+            msg = self.error_label["text"].lower()
+            if "phase" in msg and type not in ("sine", "square"):
+                self.error_label.config(text="", foreground="red")
+                self.phase_entry.delete(0, tk.END)
+                self.phase_entry.insert(0, "0.0")
+            elif "frequency" in msg and type not in ("sine", "square", "triangle", "sawtooth"):
+                self.error_label.config(text="", foreground="red")
+                self.freq_entry.delete(0, tk.END)
+                self.freq_entry.insert(0, "1.0")
+            elif "pulse width" in msg and type != "rectangle impulse":
+                self.error_label.config(text="", foreground="red")
+                self.pulse_width_entry.delete(0, tk.END)
+                self.pulse_width_entry.insert(0, "1.0")
+
+    def on_input_type_change(self, *args):
+        new_type = self.input_type.get().lower()
+        self.in_out.input_type = new_type
+        self.update_visibility()
+
+    def open_control_window(self):
+        window = tk.Tk()
+        window.title("Suspension parameters")
+        window.geometry(f"{self.width}x{self.height}")
+        window.configure(bg="white")
+        self.input_type = tk.StringVar(value="sine")
+        self.input_type.trace_add("write", self.on_input_type_change)
+
+        #Better quality of text in window
+        font_settings = ("Helvetica", 11)
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except:
+            pass
+        window.tk.call('tk', 'scaling', 2.5)
+
+        tk.Label(window, text="Spring constant (k):", bg="white", font=font_settings).pack(pady=(30,10))
+        self.k_entry = tk.Entry(window)
+        self.k_entry.insert(0, str(self.spring.k))
+        self.k_entry.pack()
+
+        tk.Label(window, text="Damping ratio (b):", bg="white", font=font_settings).pack(pady=(0,10))
+        self.b_entry = tk.Entry(window)
+        self.b_entry.insert(0, str(self.attenuator.b))
+        self.b_entry.pack()
+
+        tk.Label(window, text="Mass (m):", bg="white", font=font_settings).pack(pady=(0,10))
+        self.m_entry = tk.Entry(window)
+        self.m_entry.insert(0, str(self.in_out.mass))
+        self.m_entry.pack()
+
+        self.input_type.trace_add("write", self.update_visibility)
+
+        signal_types = ["sine", "square", "sawtooth", "triangle", "rectangle impulse", "impulse", "step"]
+        radio_frame = tk.LabelFrame(window, text="Input signal type", bg="white", font=font_settings, fg="#3e8ef7", bd=2, relief="groove", padx=10, pady=10)
+        radio_frame.pack(pady=(10, 10), padx=20, fill="x")
+        for signal in signal_types:
+            tk.Radiobutton(radio_frame, text=signal, variable=self.input_type, value=signal, bg="white", font=font_settings).pack()
+
+        self.param_frame = tk.Frame(window, bg="white")
+        self.param_frame.pack(pady=10)
+
+        self.amp_label = tk.Label(self.param_frame, text="Amplitude:", bg="white", font=font_settings)
+        self.amp_label.grid(row=0, column=0, padx=10)
+        self.amp_entry = tk.Entry(self.param_frame, width=7)
+        self.amp_entry.insert(0, str(self.in_out.amplitude))
+        self.amp_entry.grid(row=0, column=1, padx=10)
+
+        self.freq_label = tk.Label(self.param_frame, text="Frequency [Hz]:", bg="white", font=font_settings)
+        self.freq_label.grid(row=1, column=0, padx=10)
+        self.freq_entry = tk.Entry(self.param_frame, width=7)
+        self.freq_entry.insert(0, str(self.in_out.frequency))
+        self.freq_entry.grid(row=1, column=1, padx=10)
+
+        self.phase_label = tk.Label(self.param_frame, text="Phase [rad]:", bg="white", font=font_settings)
+        self.phase_label.grid(row=2, column=0, padx=10)
+        self.phase_entry = tk.Entry(self.param_frame, width=7)
+        self.phase_entry.insert(0, str(self.in_out.phase))
+        self.phase_entry.grid(row=2, column=1, padx=10)
+
+        self.pulse_width_label = tk.Label(self.param_frame, text="Pulse width:", bg="white", font=font_settings)
+        self.pulse_width_label.grid(row=3, column=0, padx=10)
+        self.pulse_width_entry = tk.Entry(self.param_frame, width=7)
+        self.pulse_width_entry.insert(0, str(self.in_out.pulse_width))
+        self.pulse_width_entry.grid(row=3, column=1, padx=10)
+
+        self.update_visibility()
+
+        tk.Button(window, text="Simulate", command=self.simulate, bg="#3e8ef7", fg="white", padx=15, pady=8).pack(pady=(30,10))
+        tk.Button(window, text="Input and output", command=self.simulate_and_plot, bg="#3e8ef7", fg="white", padx=15, pady=8).pack(pady=(0,20))
+
+        self.error_label = tk.Label(window, text="", bg="white", foreground="red")
+        self.error_label.pack(pady=5)
+        window.mainloop()
 
 def main():
     pygame.init()
     display = (800, 600)
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("3D Spring with Camera Control")
+    pygame.display.set_caption("3D Spring Dynamic Simulation")
 
     glEnable(GL_DEPTH_TEST)
     glClearColor(0.1, 0.1, 0.1, 1.0)
-
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(45, display[0] / display[1], 0.1, 100.0)
-
     glMatrixMode(GL_MODELVIEW)
 
+    control = ParameterControl()
+
+    # 🧵 GUI w osobnym wątku
+    gui_thread = threading.Thread(target=control.open_control_window)
+    gui_thread.daemon = True
+    gui_thread.start()
+
+    # ❌ Nie wywołuj control.simulate() tutaj
+
+    camera_angle = 0.0
+    rotate_left = rotate_right = False
+    rotation_speed = 60
+    radius = 20
     clock = pygame.time.Clock()
-
-    # Camera state
-    camera_x = 0.0
-    move_left, move_right = False, False
-    camera_speed = 5.0  # units per second
-
-    angle = 0  # for spring rotation
-
     running = True
+
     while running:
         dt = clock.tick(60) / 1000.0
+
         for event in pygame.event.get():
-            if event.type == QUIT:
+            if event.type == pygame.QUIT:
                 running = False
-            elif event.type == KEYDOWN:
-                if event.key == K_a:
-                    move_left = True
-                elif event.key == K_d:
-                    move_right = True
-            elif event.type == KEYUP:
-                if event.key == K_a:
-                    move_left = False
-                elif event.key == K_d:
-                    move_right = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:
+                    rotate_left = True
+                elif event.key == pygame.K_d:
+                    rotate_right = True
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_a:
+                    rotate_left = False
+                elif event.key == pygame.K_d:
+                    rotate_right = False
 
-        # Update camera position
-        if move_left:
-            camera_x -= camera_speed * dt
-        if move_right:
-            camera_x += camera_speed * dt
-
-        angle += 30 * dt  # Rotate spring slowly
+        if rotate_left:
+            camera_angle += rotation_speed * dt
+        if rotate_right:
+            camera_angle -= rotation_speed * dt
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
 
-        # Move camera left/right while always looking at the spring center
-        gluLookAt(camera_x, 5, 25,  # camera position
-                  camera_x, 5, 0,   # look-at point
-                  0, 1, 0)          # up vector
+        cam_x = radius * math.sin(math.radians(camera_angle))
+        cam_z = radius * math.cos(math.radians(camera_angle))
+        gluLookAt(cam_x, 5, cam_z, 0, 5, 0, 0, 1, 0)
 
-        glPushMatrix()
-        glTranslatef(0.0, 0.0, 0.0)  # center the spring vertically
-        glRotatef(angle, 0, 1, 0)     # rotate the spring
-        draw_3d_spring()
-        glPopMatrix()
+        if control.simulation_data:
+            t, u, y = control.simulation_data
+            control.frame = (control.frame + 1) % len(y)
+            input_value = u[control.frame]
+            output_value = y[control.frame]
+
+            start_y = 3 + input_value
+            end_y = (start_y + output_value) * 2.2
+
+            Spring().draw_3d_spring(start_y=start_y, end_y=end_y)
+            Attenuator().damper(start_y, end_y, damper_radius=0.3, rod_radius=0.05)
+            Other_elements().draw_platform(end_y, 2.5, 3.0, 1.2, 0, 0.1, 0.4, 0.7)
+            Other_elements().draw_rod(start_y, rod_length=4)
+            Wheel().draw_wheel(start_y, 1.5, 1.0, 0.7, 0.7, 0.7)
+            Wheel().draw_wheel(start_y, 2.5, 0.9, 0.3, 0.3, 0.3)
+            Other_elements().draw_platform(start_y - 3, 3.5, 3.0, 0.5, 2.0, 0.5, 0.8, 0.1)
 
         pygame.display.flip()
 
     pygame.quit()
+    
+    
 
 if __name__ == "__main__":
     main()
-"""
