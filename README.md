@@ -8,11 +8,10 @@ Użyte biblioteki:
 - OpenGL - wizualizacja 3D systemu
 - pygame - wyświetlenie okna
 - scipy - obliczenia, równania różniczkowe, transmitancja
-- numpy - obliczenia, operacje na macierzach
 - matplotlib - wykresy pozycji układu i stabilności
 
   #### Wygląd okna symulacji
-  ![simulation](simulation.png)
+  ![simulation](raport/simulation.png)
 
   #### Wygląd okna z wyborem parametrów
- ![parameter_window](parameter_window.png)
+ ![parameter_window](raport/parameter_window.png)
