@@ -1,4 +1,5 @@
 import pygame
+import os
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -418,6 +419,7 @@ class InputOutputFunction:
         plt.tight_layout(rect=[0, 0, 1, 0.88])
         plt.show()
 
+
  #Window to control parameters of car suspension       
 class ParameterControl:
     def __init__(self):
@@ -449,8 +451,8 @@ class ParameterControl:
 
             if not (10.0 <= new_k <= 1000.0):
                 raise ValueError("Error - k must be in range [10, 1000]")
-            if not (0.0 <= new_b <= 100.0):
-                raise ValueError("Error - b must be in range [0, 100]")
+            if not (5.0 <= new_b <= 100.0):
+                raise ValueError("Error - b must be in range [5, 100]")
             if not (50.0 <= new_a <= 100.0):
                 raise ValueError("Error - A must be in range [50, 100]")
             if not (0.1 <= new_f <= 10.0):
@@ -668,8 +670,9 @@ class ParameterControl:
         window.mainloop()
 
 def main():
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "1200,300"
     pygame.init()
-    display = (800, 600)
+    display = (1400, 900)
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
     pygame.display.set_caption("3D Spring Dynamic Simulation")
 

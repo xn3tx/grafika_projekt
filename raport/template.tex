@@ -60,7 +60,13 @@
 
 \section{Cel}
 
-Stworzenie symulacji systemu amortyzacji samochodowej pozwalającej na zmiany parametrów takich jak: waga, współczynniki sprężyny i tłumika oraz platformy wprawiającej układ w drgania. Dodatkowa ilustracja stabilności układu. 
+Stworzenie symulacji systemu amortyzacji samochodowej w języku Python pozwalającej na zmiany parametrów takich jak: masa, współczynniki sprężyny i tłumika oraz ruchu platformy wprawiającej układ w drgania. Dodatkowa ilustracja stabilności układu. 
+
+\vspace{0.1cm}
+Symulowany układ jest układem 2 rzędu opisanym transmitancją:
+\[
+G(s) = \frac{Y(s)}{U(s)} = \frac{1}{m s^2 + b s + k}
+\]
 
 %----------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -72,7 +78,7 @@ Stworzenie symulacji systemu amortyzacji samochodowej pozwalającej na zmiany pa
 	2. & Wybór sygnału wejściowego\\
 	3. & Generowanie charakterystyk Bodego\\
 	4. & Przedstawienie graficzne sygnału wejściowego i wyjściowego\\
-	5. & Wizualizacja działania układu amortyzacji\\
+	5. & Wizualizacja 3D działania układu amortyzacji\\
 \end{tabular}
 
 %------------------------------------------------------------------------------------------------------------------------------------------
@@ -86,18 +92,18 @@ Stworzenie symulacji systemu amortyzacji samochodowej pozwalającej na zmiany pa
 
   \vspace{0.1cm}
 
-  \textcolor{blue}{\texttt{ParameterControl}} --- klasa z funkcjami odpowiedzialnymi za wizualizację wyboru parametrów oraz ich aktualizacje.
+  \textcolor{blue}{\texttt{ParameterControl}} --- klasa z funkcjami odpowiedzialnymi za wizualizację okna wyboru parametrów układu i sygnału wejściowego oraz ich aktualizacje.
   
   \vspace{0.1cm}
 
-  {\texttt{update\_parameters}},{\texttt{update\_simulation\_data}},{\texttt{update\_visibility}} --- funkcje aktualizujące parametry na podstawie wyboru użytkownika.
-  Dodatkowe zabezpieczenia przed niepoprawnymi wartościami, które mogłyby uniemożliwić realizację zadania.
+  {\texttt{update\_parameters}}, \ {\texttt{update\_simulation\_data}}, \ {\texttt{update\_visibility}} --- funkcje aktualizujące parametry na podstawie wyboru użytkownika.
+  Dodatkowe zabezpieczenia przed niepoprawnymi wartościami, które mogłyby uniemożliwić realizację zadania (program wyświetla w oknie etytkietę z informacją o prawidłowości wprowadzonych danych).
 
   \vspace{0.2cm}
   
   \item \textbf{Wyświetlanie okien programu.} \par\vspace{0.1cm}
   Interfejs graficzny jest zrealizowany za pomocą biblioteki Pygame. Program składa się z 2 okien, które są aktywne jednocześnie poprzez {\texttt{threading}}. Po uruchomieniu kodu otwierają się okna programu. Naciśnięcie przycisku simulate aktywuje symulacje w oknie symulacji.
-  Możliwe jest również wyświetlenie charakterystyki Bodego, wykresów sygnałów wejściowych i wyjściowych po naciśnięciu odpowiadających im przycisków.
+  Możliwe jest również wyświetlenie charakterystyk Bodego, wykresów sygnałów wejściowych i wyjściowych po naciśnięciu odpowiadających im przycisków.
 
   \vspace{0.1cm}
 
@@ -139,9 +145,7 @@ Stworzenie symulacji systemu amortyzacji samochodowej pozwalającej na zmiany pa
 
 {\footnotesize
 \begin{align*}
-y^{(4)}[k] &= \frac{a_3 \cdot u^{(3)}[k] + a_2 \cdot u^{(2)}[k] + a_1 \cdot u^{(1)}[k] + a_0 \cdot u[k] - b_3 \cdot y^{(3)}[k-1] - b_2 \cdot y^{(2)}[k-1] - b_1 \cdot y^{(1)}[k-1] - b_0 \cdot y[k-1]}{b_4} \\
-y^{(3)}[k] &= y^{(3)}[k-1] + \Delta t \cdot y^{(4)}[k] \\
-y^{(2)}[k] &= y^{(2)}[k-1] + \Delta t \cdot y^{(3)}[k] \\
+y^{(2)}[k] &= \frac{- b \cdot y^{(1)}[k-1] -k \cdot y[k-1] + u[k]}{m} \\
 y^{(1)}[k] &= y^{(1)}[k-1] + \Delta t \cdot y^{(2)}[k] \\
 y[k] &= y[k-1] + \Delta t \cdot y^{(1)}[k]
 \end{align*}
@@ -160,9 +164,9 @@ y[k] &= y[k-1] + \Delta t \cdot y^{(1)}[k]
   
   \item \textbf{Wyznaczenie charakterystyk Bodego.} \par\vspace{0.1cm}
     Za narysowanie charakterystyki amplitudowej i fazowej oraz za określenie stabilności
-    odpowiedzialna jest klasa {\texttt{bode\_plot}}. Inicjalizacja klasy pobiera potrzebne dane
-    oraz przygotowuje zakres kreślonego wykresu. W funkcji \textcolor{blue}{\texttt{plotting\_bode}} obliczne są charakterystyki fazowe i amplitudowe
-    układu. 
+    odpowiedzialna jest klasa \textcolor{blue}{\texttt{BodePlot}}. Inicjalizacja klasy pobiera potrzebne dane
+    oraz przygotowuje zakres kreślonego wykresu. W funkcji {\texttt{plotting\_bode}} obliczne są charakterystyki fazowe i amplitudowe
+    układu. Jest również na podstawie wykresów określany zapas amplitudy i fazy, który decyduje o stabilności.
   \vspace{0.2cm}
 
 \end{enumerate}
@@ -171,7 +175,7 @@ y[k] &= y[k-1] + \Delta t \cdot y^{(1)}[k]
 
 \section{Podsumowanie i wnioski}
 
-Cel projektu został zrealizowany. Program umożliwia obliczenie oraz wizualizację zachowania układu. Użytkownik ma możliwość sterowania parametrami symulacji, wyboru pobudzenia oraz obserwacji wyników zarówno numerycznych, jak i graficznych.
+Cel projektu został zrealizowany. Program umożliwia obliczenie oraz wizualizację zachowania układu. Użytkownik ma możliwość sterowania parametrami symulacji, wyboru pobudzenia oraz obserwacji wyników zarówno numerycznych, jak i graficznych na symulacji.
 
 \vspace{0.5cm}
 
