@@ -332,7 +332,7 @@ class InputOutputFunction:
         self.dt = 0.01
 
         self.frequency = 1.0
-        self.amplitude = 1.0
+        self.amplitude = 50.0
         self.phase = 0.0
         self.pulse_width = 1.0
         self.mass = 1.0
@@ -422,7 +422,7 @@ class InputOutputFunction:
 class ParameterControl:
     def __init__(self):
         self.width = 800
-        self.height = 1100
+        self.height = 1050
         self.fps = 60
         self.spring = Spring()
         self.attenuator = Attenuator()
@@ -450,8 +450,8 @@ class ParameterControl:
                 raise ValueError("Error - k must be in range [10, 1000]")
             if not (0.0 <= new_b <= 100.0):
                 raise ValueError("Error - b must be in range [0, 100]")
-            if not (0.0 <= new_a <= 5.0):
-                raise ValueError("Error - A must be in range [0, 5]")
+            if not (50.0 <= new_a <= 100.0):
+                raise ValueError("Error - A must be in range [50, 100]")
             if not (0.1 <= new_f <= 10.0):
                 raise ValueError("Error - f must be in range [0.1, 10]")
             if not (-3.14 <= new_phase <= 3.14):
@@ -702,13 +702,14 @@ def main():
         gluLookAt(cam_x, 5, cam_z, 0, 5, 0, 0, 1, 0)
 
         if control.simulation_data:
+                 
             t, u, y = control.simulation_data
             control.frame = (control.frame + 1) % len(y)
             input_value = u[control.frame]
             output_value = y[control.frame]
 
-            start_y = 3 + input_value
-            end_y = (start_y + output_value) * 2.2
+            start_y = (3 + input_value)/20
+            end_y = (3+output_value)*2.2 #just for scale 
 
             Spring().draw_3d_spring(start_y=start_y, end_y=end_y)
             Attenuator().damper(start_y, end_y, damper_radius=0.3, rod_radius=0.05)
