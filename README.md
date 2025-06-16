@@ -10,9 +10,8 @@ Użyte biblioteki:
 - scipy - obliczenia, równania różniczkowe, transmitancja
 - matplotlib - wykresy pozycji układu i stabilności
 
-  #### Wygląd okna symulacji
-  <img src="raport/simulation.png" alt="Simulation" width="400">
-  ![simulation](raport/simulation.png)
-
-  #### Wygląd okna z wyborem parametrów
- ![parameter_window](raport/parameter_window.png)
+#### Wygląd okna symulacji
+<img src="raport/simulation.png" alt="Simulation" width="400">
+ 
+#### Wygląd okna z wyborem parametrów
+<img src="raport/parameter_window.png" alt="Parameter window" width="400">
