@@ -10,3 +10,9 @@ Użyte biblioteki:
 - scipy - obliczenia, równania różniczkowe, transmitancja
 - numpy - obliczenia, operacje na macierzach
 - matplotlib - wykresy pozycji układu i stabilności
+
+  #### Wygląd okna symulacji
+  ![simulation](simulation.png)
+
+  #### Wygląd okna z wyborem parametrów
+ ![parameter_window](parameter_window.png)
