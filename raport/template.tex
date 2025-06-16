@@ -26,8 +26,9 @@
 \allsectionsfont{\sffamily}
 
 \title{
-  \textbf{Dokumentacja projektu z Programowania Obiektowego i Grafiki Komputerowej 2025} \\
-  \large Implementacja symulatora systemu amortyzacji samochodowej wraz ze stacją diagnostyczną wymuszającą drgania
+  \textbf{Projekt z przedmiotu Programowanie Obiektowe i Grafika Komputerowa
+} \\
+  \large System amortyzacji samochodowej wraz ze stacją diagnostyczną wymuszającą drgania
 }
 
 \author{
@@ -49,6 +50,7 @@
 \begin{center}
   \begin{tabular}{l r}
     Okres trwania projektu: & Semestr letni roku akademickiego 2025 \\
+    Prowadzący projekt: & dr inż. \textsc{Marcin Pazio}
   \end{tabular}
 \end{center}
 
@@ -58,32 +60,142 @@
 
 \section{Cel}
 
-Stworzenie symulatora systemu amortyzacji samochodowej wraz ze stacją diagnostyczną wymuszającą drgania. 
+Stworzenie symulacji systemu amortyzacji samochodowej pozwalającej na zmiany parametrów takich jak: waga, współczynniki sprężyny i tłumika oraz platformy wprawiającej układ w drgania. Dodatkowa ilustracja stabilności układu. 
 
 %----------------------------------------------------------------------------------------------------------------------------------------------
 
-\section{Zaimplementowane funkcje symulatora}
+\section{Zaimplementowane funkcje programu}
+
 
 \begin{tabular}{l l}
-	1. & Wybór parametrów układu - masy platformy, współczynnika tłumienia i współczynnika sprężystości\\ 
-	2. & Wybór sygnału wejściowego wraz z wszystkimi jego parametrami\\
-	3. & Przedstawienie graficzne układu i symulacja jego ruchu przy określonych pobudzeniach\\
-	4. & Wykreślanie sygnału pobudzającego i wyjściowego oraz określanie stabilności układu\\
+	1. & Wybór parametrów obiektu\\ 
+	2. & Wybór sygnału wejściowego\\
+	3. & Generowanie charakterystyk Bodego\\
+	4. & Przedstawienie graficzne sygnału wejściowego i wyjściowego\\
+	5. & Wizualizacja działania układu amortyzacji\\
 \end{tabular}
 
 %------------------------------------------------------------------------------------------------------------------------------------------
 
-\section{Wykorzystane biblioteki}
-
-%----------------------------------------------------------------------------------------------------------------------------------------
-
 \section{Opis funkcji}
 
-%-------------------------------------------------------------------------------------------------------------------------------------------
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Wybór parametrów obiektu i sygnału wejściowego.} \par\vspace{0.1cm}
+  Z poziomu interfejsu można zmienić parametry układu – współczynniki sprężystości i tłumienia, masę oraz wybrany sygnał pobudzający wraz z wartościami, które go charakteryzują 
+  (amplitudą, częstotliwością, fazą, szerokością impulsu). 
+
+  \vspace{0.1cm}
+
+  \textcolor{blue}{\texttt{ParameterControl}} --- klasa z funkcjami odpowiedzialnymi za wizualizację wyboru parametrów oraz ich aktualizacje.
+  
+  \vspace{0.1cm}
+
+  {\texttt{update\_parameters}},{\texttt{update\_simulation\_data}},{\texttt{update\_visibility}} --- funkcje aktualizujące parametry na podstawie wyboru użytkownika.
+  Dodatkowe zabezpieczenia przed niepoprawnymi wartościami, które mogłyby uniemożliwić realizację zadania.
+
+  \vspace{0.2cm}
+  
+  \item \textbf{Wyświetlanie okien programu.} \par\vspace{0.1cm}
+  Interfejs graficzny jest zrealizowany za pomocą biblioteki Pygame. Program składa się z 2 okien, które są aktywne jednocześnie poprzez {\texttt{threading}}. Po uruchomieniu kodu otwierają się okna programu. Naciśnięcie przycisku simulate aktywuje symulacje w oknie symulacji.
+  Możliwe jest również wyświetlenie charakterystyki Bodego, wykresów sygnałów wejściowych i wyjściowych po naciśnięciu odpowiadających im przycisków.
+
+  \vspace{0.1cm}
+
+  \textcolor{blue}{\texttt{ParameterControl}} --- klasa z wyglądem interfejsu ustawiania parametrów oraz logiką przycisków
+
+
+  \vspace{0.2cm}
+  
+  \item \textbf{Pobudzenia wejściowe układu.} \par\vspace{0.1cm}
+  Układ może być pobudzany następującymi sygnałami: 
+  \begin{itemize}
+  \item \textbf{Sinusoidalnym:} \( y(t) = A \sin(2\pi f t + \varphi) \)
+  \item \textbf{Prostokątnym:} \( y(t) = A \cdot \operatorname{sgn}\left( \sin(2\pi f t + \varphi) \right) \)
+  \item \textbf{Piłokształtnym:} \( y(t) = \left( \frac{2A}{T} \right) (t \bmod T) - A \)
+  \item \textbf{Trójkątnym:} \(y(t) = A \left(1 - 4 \left| \frac{t \bmod T}{T} - \frac{1}{2} \right| \right)\)
+  \item \textbf{Impulsem prostokątnym:} \( y(t) = 
+  \begin{cases}
+  A, & \text{dla } 0 < t < pulse width \\
+  0, & \text{w przeciwnym razie}
+  \end{cases}
+  \)
+  \item \textbf{Skokiem jednostkowym:} \( y(t) = A \cdot u(t) \)
+  \item \textbf{Impulsem jednostkowym:} \(y(t) = A \cdot \delta(t)\)
+\end{itemize}
+
+\vspace{0.2cm}
+  
+  \item \textbf{Wyznaczenie wyjścia układu.} \par\vspace{0.1cm}
+  Do wyznaczenia wyjścia wykorzystano różniczkowanie metodą Eulera. 
+
+  \vspace{0.1cm}
+
+  \textcolor{blue}{\texttt{InputOutputFunction}} --- klasa odpowiedzialna za obliczanie sygnału wyjściowego
+  
+
+\vspace{0.1cm}
+
+{\texttt{euler\_output}} --- wyznaczenie kolejnych pochodnych sygnału wyjściowego za pomocą metody Eulera
+
+{\footnotesize
+\begin{align*}
+y^{(4)}[k] &= \frac{a_3 \cdot u^{(3)}[k] + a_2 \cdot u^{(2)}[k] + a_1 \cdot u^{(1)}[k] + a_0 \cdot u[k] - b_3 \cdot y^{(3)}[k-1] - b_2 \cdot y^{(2)}[k-1] - b_1 \cdot y^{(1)}[k-1] - b_0 \cdot y[k-1]}{b_4} \\
+y^{(3)}[k] &= y^{(3)}[k-1] + \Delta t \cdot y^{(4)}[k] \\
+y^{(2)}[k] &= y^{(2)}[k-1] + \Delta t \cdot y^{(3)}[k] \\
+y^{(1)}[k] &= y^{(1)}[k-1] + \Delta t \cdot y^{(2)}[k] \\
+y[k] &= y[k-1] + \Delta t \cdot y^{(1)}[k]
+\end{align*}
+}
+
+
+
+  \vspace{0.2cm}
+
+  \item \textbf{Rysowanie wykresów sygnału wejściowego i wyjściowego.} \par\vspace{0.1cm}
+  Do rysowania wykresów wykorzystano bibliotekę matplotlib. 
+  Rysowanie wykresów realizuje funkcja {\texttt{input\_output\_plot}}
+  w klasie \textcolor{blue}{\texttt{InputOutputFunction}}.
+
+  \vspace{0.2cm}
+  
+  \item \textbf{Wyznaczenie charakterystyk Bodego.} \par\vspace{0.1cm}
+    Za narysowanie charakterystyki amplitudowej i fazowej oraz za określenie stabilności
+    odpowiedzialna jest klasa {\texttt{bode\_plot}}. Inicjalizacja klasy pobiera potrzebne dane
+    oraz przygotowuje zakres kreślonego wykresu. W funkcji \textcolor{blue}{\texttt{plotting\_bode}} obliczne są charakterystyki fazowe i amplitudowe
+    układu. 
+  \vspace{0.2cm}
+
+\end{enumerate}
+
+%---------------------------------------------------------------------------------------------------------------------------
 
 \section{Podsumowanie i wnioski}
 
+Cel projektu został zrealizowany. Program umożliwia obliczenie oraz wizualizację zachowania układu. Użytkownik ma możliwość sterowania parametrami symulacji, wyboru pobudzenia oraz obserwacji wyników zarówno numerycznych, jak i graficznych.
 
+\vspace{0.5cm}
+
+\subsection*{Elementy programowania obiektowego}
+
+W projekcie programowanie obiektowe zostało wykorzystane do podziału programu na uporządkowane klasy. Każdy istotny element układu (sprężyna, tłumik itd.) został odwzorowany za pomocą osobnych klas. Przykładowo:
+
+\begin{itemize}
+  \item \texttt{Spring} — klasa reprezentująca sprężynę, przechowuje jej model graficzny 3D,
+  \item \texttt{Attenuator} — reprezentuje tłumik i jego model graficzny 3D,
+  \item \texttt{Wheel} - klasa odpowiedzialna za graficzne przedstawienie koła będącego częścią układu,
+  \item \texttt{InputOutputFunction} — realizuje obliczenia związane z dynamiką układu,
+  \item \texttt{ParameterControl} — odpowiada za interfejs użytkownika i aktualizację parametrów,
+  \item \texttt{BodePlot} — oblicza i rysuje charakterystyki Bodego,
+\end{itemize}
+
+Dzięki takiemu podziałowi kod stał się przejrzysty. Poszczególne klasy odpowiadają poszczególne zadania, co pozwala na łatwą zmianę programu bez konieczności ingerencji w cały system, ułatwia odnalezienie porządanego fragmentu kodu. Korzystano również z dziedziczenia i enkapsulacji — dane przechowywane są wewnątrz obiektów, a użytkownik korzysta z interfersu.
+
+\vspace{0.5cm}
+
+\subsection*{Grafika komputerowa z OpenGL}
+
+Biblioteka OpenGL umożliwia trójwymiarową wizualizację układu dynamicznego w czasie rzeczywistym. Dzięki połączeniu Pygame (zarządzającego oknem oraz zdarzeniami) z PyOpenGL możliwe było narysowanie obiektów takich jak sprężyna, masa oraz koło. Dynamiczne zmiany w układzie odwzorowują zmiany wartości obliczanych numerycznie, co tworzy spójną reprezentację fizyki i grafiki.
+Wizualizacja ta jest zsynchronizowana z częścią obliczeniową, co pozwala na intuicyjne zrozumienie wpływu parametrów na zachowanie układu.
 
 
 \end{document}
