@@ -356,7 +356,7 @@ class InputOutputFunction:
         elif self.input_type == "impulse":
             u = np.zeros_like(t)
             dt = t[1] - t[0]
-            idx = np.argmin(np.abs(t - 0.01))
+            idx = np.argmin(np.abs(t - 0.05))
             u[idx] = self.amplitude / dt  
             return u
         elif self.input_type == "step":
@@ -422,7 +422,7 @@ class InputOutputFunction:
 class ParameterControl:
     def __init__(self):
         self.width = 800
-        self.height = 1050
+        self.height = 1100
         self.fps = 60
         self.spring = Spring()
         self.attenuator = Attenuator()
@@ -444,6 +444,7 @@ class ParameterControl:
             new_m = float(self.m_entry.get())
             new_phase = float(self.phase_entry.get())
             new_pulse_width = float(self.pulse_width_entry.get())
+            new_energy = float(self.en_entry.get())
             new_type = self.input_type.get().lower()
 
             if not (10.0 <= new_k <= 1000.0):
@@ -460,6 +461,8 @@ class ParameterControl:
                 raise ValueError("Error - pulse width must be in range [0,10]")
             if not (1.0 <= new_m <= 1000.0):
                 raise ValueError("Error - mass must be in range [1,1000]")
+            if not (5000.0 <= new_energy <= 10000.0):
+                raise ValueError("Error - energy must be in range [5000,10000]")
 
             #Save correct values
             self.spring.k = new_k
@@ -470,6 +473,9 @@ class ParameterControl:
             self.in_out.pulse_width = new_pulse_width
             self.in_out.mass = new_m
             self.in_out.input_type = new_type
+            type = self.input_type.get().lower()
+            if type == "impulse":
+                self.in_out.amplitude = new_energy * self.in_out.dt
 
             if self.error_label is not None:
                 self.error_label.config(text="Correct parameters", foreground="green")
@@ -509,9 +515,10 @@ class ParameterControl:
             self.amp_entry.grid()
             self.phase_label.grid()
             self.phase_entry.grid()
+            self.en_label.grid_remove()
+            self.en_entry.grid_remove()
             self.pulse_width_label.grid_remove()
             self.pulse_width_entry.grid_remove()
-            self.simulate_button.config(state="normal")  
         elif type in ("triangle", "sawtooth"):
             self.freq_label.grid()
             self.freq_entry.grid()
@@ -519,32 +526,43 @@ class ParameterControl:
             self.amp_entry.grid()
             self.phase_label.grid_remove()
             self.phase_entry.grid_remove()
+            self.en_label.grid_remove()
+            self.en_entry.grid_remove()
             self.pulse_width_label.grid_remove()
             self.pulse_width_entry.grid_remove()
-            if type == "triangle":
-                self.simulate_button.config(state="normal")
-            else:
-                self.simulate_button.config(state="disabled")
-        elif type in ("step", "impulse"):
+        elif type == "step":
             self.freq_label.grid_remove()
             self.freq_entry.grid_remove()
             self.amp_label.grid()
             self.amp_entry.grid()
             self.phase_label.grid_remove()
             self.phase_entry.grid_remove()
+            self.en_label.grid_remove()
+            self.en_entry.grid_remove()
             self.pulse_width_label.grid_remove()
             self.pulse_width_entry.grid_remove()
-            self.simulate_button.config(state="disabled")
+        elif type == "impulse":
+            self.freq_label.grid_remove()
+            self.freq_entry.grid_remove()
+            self.amp_label.grid_remove()
+            self.amp_entry.grid_remove()
+            self.en_label.grid()
+            self.en_entry.grid()
+            self.phase_label.grid_remove()
+            self.phase_entry.grid_remove()
+            self.pulse_width_label.grid_remove()
+            self.pulse_width_entry.grid_remove()
         elif type == "rectangle impulse":
             self.freq_label.grid_remove()
             self.freq_entry.grid_remove()
             self.amp_label.grid()
             self.amp_entry.grid()
+            self.en_label.grid_remove()
+            self.en_entry.grid_remove()
             self.phase_label.grid_remove()
             self.phase_entry.grid_remove()
             self.pulse_width_label.grid()
             self.pulse_width_entry.grid()
-            self.simulate_button.config(state="normal")
 
         if self.error_label and self.error_label["text"]:
             msg = self.error_label["text"].lower()
@@ -631,6 +649,12 @@ class ParameterControl:
         self.pulse_width_entry = tk.Entry(self.param_frame, width=7)
         self.pulse_width_entry.insert(0, str(self.in_out.pulse_width))
         self.pulse_width_entry.grid(row=3, column=1, padx=10)
+
+        self.en_label = tk.Label(self.param_frame, text="Energy:", bg="white", font=font_settings)
+        self.en_label.grid(row=0, column=0, padx=10)
+        self.en_entry = tk.Entry(self.param_frame, width=7)
+        self.en_entry.insert(0, str(self.in_out.amplitude/self.in_out.dt))
+        self.en_entry.grid(row=0, column=1, padx=10)
 
         self.simulate_button = tk.Button(window, text="Simulate", command=self.simulate, bg="#3e8ef7", fg="white", padx=15, pady=5)
         self.simulate_button.pack(pady=(30, 5))
