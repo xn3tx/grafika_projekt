@@ -11,6 +11,7 @@ Użyte biblioteki:
 - matplotlib - wykresy pozycji układu i stabilności
 
   #### Wygląd okna symulacji
+  <img src="raport/simulation.png" alt="Simulation" width="400">
   ![simulation](raport/simulation.png)
 
   #### Wygląd okna z wyborem parametrów
